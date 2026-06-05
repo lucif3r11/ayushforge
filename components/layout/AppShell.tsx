@@ -7,7 +7,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <AppHeader />
-      <main className="pt-14 pb-16 min-h-screen">{children}</main>
+      <main
+        className="pb-16 min-h-screen"
+        style={{ paddingTop: "calc(3.5rem + env(safe-area-inset-top))" }}
+      >
+        {children}
+      </main>
       <BottomNav />
     </>
   );
