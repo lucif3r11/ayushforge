@@ -25,8 +25,8 @@ function normalizeExercises(rawExs: unknown[]) {
       const ex = e as Record<string, unknown>;
       return {
         exerciseName: String(ex.exerciseName ?? ex.name ?? "").trim(),
-        targetSets: Number(ex.targetSets ?? 3),
-        targetReps: String(ex.targetReps ?? "8-12"),
+        targetSets: Number(ex.targetSets ?? ex.sets ?? 3),
+        targetReps: String(ex.targetReps ?? ex.reps ?? "8-12"),
         targetWeight: ex.targetWeight != null ? Number(ex.targetWeight) : undefined,
         restSeconds: ex.restSeconds != null ? Number(ex.restSeconds) : undefined,
         notes: ex.notes ? String(ex.notes) : undefined,
