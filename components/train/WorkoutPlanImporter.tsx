@@ -31,6 +31,9 @@ function normalizeExercises(rawExs: unknown[]) {
         restSeconds: ex.restSeconds != null ? Number(ex.restSeconds) : undefined,
         notes: ex.notes ? String(ex.notes) : undefined,
         order: Number(ex.order ?? idx),
+        supersetGroup: ex.supersetGroup ? String(ex.supersetGroup) : undefined,
+        tempo: ex.tempo ? String(ex.tempo) : undefined,
+        progressionScheme: ex.progressionScheme ? String(ex.progressionScheme) : undefined,
       };
     })
     .filter((e) => e.exerciseName.length > 0);

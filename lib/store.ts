@@ -318,6 +318,9 @@ export const useAppStore = create<AppStore>()(
               restSeconds: ex.restSeconds,
               notes: ex.notes,
               order: ex.order ?? idx,
+              supersetGroup: ex.supersetGroup,
+              tempo: ex.tempo,
+              progressionScheme: ex.progressionScheme,
             }));
             newRoutines = [
               ...newRoutines,

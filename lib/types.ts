@@ -68,6 +68,9 @@ export interface RoutineExercise {
   restSeconds?: number;
   notes?: string;
   order: number;
+  supersetGroup?: string;
+  tempo?: string;
+  progressionScheme?: string;
 }
 
 export interface Routine {
@@ -196,6 +199,9 @@ export interface WorkoutImportExercise {
   restSeconds?: number;
   notes?: string;
   order?: number;
+  supersetGroup?: string;
+  tempo?: string;
+  progressionScheme?: string;
 }
 
 export interface WorkoutImportRoutine {

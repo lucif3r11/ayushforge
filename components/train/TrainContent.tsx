@@ -27,7 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import WorkoutPlanImporter from "@/components/train/WorkoutPlanImporter";
-import type { Block, Routine } from "@/lib/types";
+import type { Block, Routine, RoutineExercise } from "@/lib/types";
 
 // ─── Active block banner ──────────────────────────────────────────────────────
 
@@ -100,11 +100,43 @@ function BlockStrip({ block }: { block: Block }) {
   );
 }
 
+// ─── Exercise grouping ────────────────────────────────────────────────────────
+
+type SingleGroup = { type: "single"; ex: RoutineExercise };
+type SupersetGroup = { type: "superset"; label: string; exs: RoutineExercise[] };
+type ExerciseGroup = SingleGroup | SupersetGroup;
+
+function groupExercises(exercises: RoutineExercise[]): ExerciseGroup[] {
+  const sorted = [...exercises].sort((a, b) => a.order - b.order);
+  const supersetCollected = new Map<string, RoutineExercise[]>();
+  for (const ex of sorted) {
+    if (ex.supersetGroup) {
+      const arr = supersetCollected.get(ex.supersetGroup) ?? [];
+      arr.push(ex);
+      supersetCollected.set(ex.supersetGroup, arr);
+    }
+  }
+  const seen = new Set<string>();
+  const groups: ExerciseGroup[] = [];
+  for (const ex of sorted) {
+    if (ex.supersetGroup) {
+      if (!seen.has(ex.supersetGroup)) {
+        seen.add(ex.supersetGroup);
+        groups.push({ type: "superset", label: ex.supersetGroup, exs: supersetCollected.get(ex.supersetGroup)! });
+      }
+    } else {
+      groups.push({ type: "single", ex });
+    }
+  }
+  return groups;
+}
+
 // ─── Routine card ─────────────────────────────────────────────────────────────
 
 function RoutineCard({ routine }: { routine: Routine }) {
   const [expanded, setExpanded] = useState(false);
-  const sorted = [...routine.exercises].sort((a, b) => a.order - b.order);
+  const groups = useMemo(() => groupExercises(routine.exercises), [routine.exercises]);
+  let singleCounter = 0;
 
   return (
     <Card>
@@ -134,19 +166,68 @@ function RoutineCard({ routine }: { routine: Routine }) {
         <>
           <Separator />
           <CardContent className="pt-3 pb-4 space-y-2">
-            {sorted.map((ex, i) => (
-              <div key={ex.exerciseId} className="flex items-center justify-between py-1.5">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="text-xs text-muted-foreground w-4 text-right shrink-0">
-                    {i + 1}.
+            {groups.map((group) => {
+              if (group.type === "superset") {
+                return (
+                  <div
+                    key={`ss-${group.label}`}
+                    className="rounded-lg border border-primary/25 bg-primary/5 px-3 pt-2.5 pb-3 space-y-2"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold tracking-[0.12em] uppercase text-primary/70">
+                        Superset
+                      </span>
+                      <div className="flex-1 h-px bg-primary/15" />
+                    </div>
+                    {group.exs.map((ex, j) => (
+                      <div key={ex.exerciseId} className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <span className="text-xs font-bold text-primary/60 shrink-0 mt-0.5 w-4">
+                            {String.fromCharCode(65 + j)}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-sm leading-snug">{ex.exerciseName}</p>
+                            {ex.notes && (
+                              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{ex.notes}</p>
+                            )}
+                            {ex.tempo && (
+                              <p className="text-xs text-muted-foreground mt-0.5">Tempo {ex.tempo}</p>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0 ml-2 mt-0.5 whitespace-nowrap">
+                          {ex.targetSets} × {ex.targetReps}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+
+              const idx = ++singleCounter;
+              const ex = group.ex;
+              return (
+                <div key={ex.exerciseId} className="flex items-start justify-between py-1">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <span className="text-xs text-muted-foreground w-4 text-right shrink-0 mt-0.5">
+                      {idx}.
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm leading-snug">{ex.exerciseName}</p>
+                      {ex.notes && (
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{ex.notes}</p>
+                      )}
+                      {ex.tempo && (
+                        <p className="text-xs text-muted-foreground mt-0.5">Tempo {ex.tempo}</p>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0 ml-2 mt-0.5 whitespace-nowrap">
+                    {ex.targetSets} × {ex.targetReps}
                   </span>
-                  <span className="text-sm truncate">{ex.exerciseName}</span>
                 </div>
-                <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                  {ex.targetSets} × {ex.targetReps}
-                </span>
-              </div>
-            ))}
+              );
+            })}
             <div className="pt-2">
               <Link href="/log">
                 <Button className="w-full gap-2" size="sm">
