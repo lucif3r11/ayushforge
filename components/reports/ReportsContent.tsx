@@ -44,6 +44,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import WorkoutHistory from "@/components/reports/WorkoutHistory";
 import ExerciseProgress from "@/components/reports/ExerciseProgress";
+import WorkoutHistoryImport from "@/components/reports/WorkoutHistoryImport";
 import type { Block, WorkoutLog } from "@/lib/types";
 
 // ─── Colour tokens (match globals.css chart vars) ────────────────────────────
@@ -732,22 +733,26 @@ export default function ReportsContent() {
                 <Download className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0 space-y-2">
                   <div>
-                    <p className="text-sm font-medium">Export Workout History</p>
+                    <p className="text-sm font-medium">Workout History</p>
                     <p className="text-xs text-muted-foreground">
-                      Download all logged sessions as JSON — includes dates, exercises, sets,
-                      weight, reps, RPE, and notes.
+                      Export all logged sessions as JSON, or restore from a previous
+                      export — includes dates, exercises, sets, weight, reps, RPE, and
+                      notes.
                     </p>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-2"
-                    onClick={handleExportWorkouts}
-                    disabled={workoutLogs.length === 0}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Export Workouts JSON
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={handleExportWorkouts}
+                      disabled={workoutLogs.length === 0}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Export Workouts JSON
+                    </Button>
+                    <WorkoutHistoryImport />
+                  </div>
                 </div>
               </div>
             </CardContent>
