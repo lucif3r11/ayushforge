@@ -15,10 +15,13 @@ import {
   Layers,
   History,
   ArrowLeft,
+  Check,
+  Ban,
+  Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,12 +33,16 @@ import type { SetType, Routine, WorkoutLog } from "@/lib/types";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
+// String-valued fields that can be edited via onChange
+type EditableSetField = "weight" | "reps" | "rpe" | "notes";
+
 interface SetRow {
   localId: string;
   weight: string;
   reps: string;
   rpe: string;
   notes: string;
+  done: boolean;
 }
 
 interface ExerciseEntry {
@@ -43,7 +50,8 @@ interface ExerciseEntry {
   exerciseId: string;
   exerciseName: string;
   sets: SetRow[];
-  prefilledFromDate?: string; // set when sets are copied from a prior session
+  prefilledFromDate?: string;
+  skipped: boolean;
 }
 
 interface PickerExercise {
@@ -60,7 +68,7 @@ function uid() {
 }
 
 function emptySet(): SetRow {
-  return { localId: uid(), weight: "", reps: "", rpe: "", notes: "" };
+  return { localId: uid(), weight: "", reps: "", rpe: "", notes: "", done: false };
 }
 
 function emptyExercise(id: string, name: string, prefillSets = 1): ExerciseEntry {
@@ -69,6 +77,7 @@ function emptyExercise(id: string, name: string, prefillSets = 1): ExerciseEntry
     exerciseId: id,
     exerciseName: name,
     sets: Array.from({ length: prefillSets }, emptySet),
+    skipped: false,
   };
 }
 
@@ -92,6 +101,7 @@ function getPrefilledSets(
       reps: s.reps > 0 ? String(s.reps) : "",
       rpe: s.rpe !== undefined ? String(s.rpe) : "",
       notes: "",
+      done: false,
     })),
     fromDate: last.date,
   };
@@ -324,18 +334,44 @@ function SetRowComponent({
   set,
   onChange,
   onDelete,
+  onToggleDone,
   canDelete,
 }: {
   index: number;
   set: SetRow;
-  onChange: (field: keyof SetRow, value: string) => void;
+  onChange: (field: EditableSetField, value: string) => void;
   onDelete: () => void;
+  onToggleDone: () => void;
   canDelete: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div
+      className={cn(
+        "flex items-center gap-2 rounded-lg px-1 transition-colors",
+        set.done && "bg-green-500/5"
+      )}
+    >
+      {/* Completion toggle */}
+      <button
+        onClick={onToggleDone}
+        className={cn(
+          "h-6 w-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-150 border-2",
+          set.done
+            ? "bg-green-500 border-green-500 text-white"
+            : "border-muted-foreground/30 text-transparent hover:border-primary/60"
+        )}
+        aria-label={set.done ? "Mark set incomplete" : "Mark set complete"}
+      >
+        <Check className="h-3 w-3" />
+      </button>
+
       {/* Set number */}
-      <span className="text-xs font-semibold text-muted-foreground w-6 text-center shrink-0">
+      <span
+        className={cn(
+          "text-xs font-semibold w-5 text-center shrink-0 tabular-nums",
+          set.done ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+        )}
+      >
         {index + 1}
       </span>
 
@@ -346,7 +382,10 @@ function SetRowComponent({
         placeholder="kg"
         value={set.weight}
         onChange={(e) => onChange("weight", e.target.value)}
-        className="h-10 text-center px-2 text-sm font-medium min-w-0"
+        className={cn(
+          "h-10 text-center px-2 text-sm font-medium min-w-0 transition-opacity",
+          set.done && "opacity-60"
+        )}
         min="0"
         step="0.5"
       />
@@ -358,7 +397,10 @@ function SetRowComponent({
         placeholder="reps"
         value={set.reps}
         onChange={(e) => onChange("reps", e.target.value)}
-        className="h-10 text-center px-2 text-sm font-medium min-w-0"
+        className={cn(
+          "h-10 text-center px-2 text-sm font-medium min-w-0 transition-opacity",
+          set.done && "opacity-60"
+        )}
         min="0"
       />
 
@@ -369,7 +411,10 @@ function SetRowComponent({
         placeholder="RPE"
         value={set.rpe}
         onChange={(e) => onChange("rpe", e.target.value)}
-        className="h-10 text-center px-2 text-sm font-medium min-w-0 w-16 shrink-0"
+        className={cn(
+          "h-10 text-center px-2 text-sm font-medium min-w-0 w-16 shrink-0 transition-opacity",
+          set.done && "opacity-60"
+        )}
         min="1"
         max="10"
         step="0.5"
@@ -397,30 +442,92 @@ function SetRowComponent({
 function ExerciseCard({
   entry,
   onRemove,
+  onSkip,
   onAddSet,
   onRemoveSet,
   onUpdateSet,
+  onToggleSetDone,
 }: {
   entry: ExerciseEntry;
   onRemove: () => void;
+  onSkip: () => void;
   onAddSet: () => void;
   onRemoveSet: (setLocalId: string) => void;
-  onUpdateSet: (setLocalId: string, field: keyof SetRow, value: string) => void;
+  onUpdateSet: (setLocalId: string, field: EditableSetField, value: string) => void;
+  onToggleSetDone: (setLocalId: string) => void;
 }) {
-  return (
-    <Card>
-      {/* Exercise header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <Dumbbell className="h-4 w-4 text-primary shrink-0" strokeWidth={2} />
-          <h3 className="font-semibold text-sm truncate">{entry.exerciseName}</h3>
-        </div>
+  const doneCount = entry.sets.filter((s) => s.done).length;
+  const allDone = doneCount === entry.sets.length && entry.sets.length > 0;
+
+  // ── Skipped state — compact collapsed row ─────────────────────────────────
+  if (entry.skipped) {
+    return (
+      <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-border/60 bg-muted/20 opacity-60">
+        <Ban className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="text-sm text-muted-foreground line-through flex-1 truncate">
+          {entry.exerciseName}
+        </span>
+        <Badge variant="outline" className="text-[10px] shrink-0 text-muted-foreground">
+          Skipped
+        </Badge>
         <button
-          onClick={onRemove}
-          className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+          onClick={onSkip}
+          className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium shrink-0 transition-colors"
         >
-          <X className="h-4 w-4" />
+          <Undo2 className="h-3 w-3" />
+          Restore
         </button>
+      </div>
+    );
+  }
+
+  // ── Active state ──────────────────────────────────────────────────────────
+  return (
+    <Card className={cn(allDone && "border-green-500/30")}>
+      {/* Exercise header */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Dumbbell
+              className={cn(
+                "h-4 w-4 shrink-0",
+                allDone ? "text-green-500" : "text-primary"
+              )}
+              strokeWidth={2}
+            />
+            <h3 className="font-semibold text-sm truncate">{entry.exerciseName}</h3>
+          </div>
+          {doneCount > 0 && (
+            <p
+              className={cn(
+                "text-xs ml-6 mt-0.5 font-medium",
+                allDone
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-muted-foreground"
+              )}
+            >
+              {allDone ? "✓ All sets done" : `${doneCount} / ${entry.sets.length} sets done`}
+            </p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-0.5 shrink-0 ml-2">
+          <button
+            onClick={onSkip}
+            title="Skip this exercise today"
+            className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
+          >
+            <Ban className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={onRemove}
+            title="Remove from this session"
+            className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Pre-fill indicator */}
@@ -433,10 +540,11 @@ function ExerciseCard({
         </div>
       )}
 
-      <CardContent className="pt-0 space-y-2 pb-4">
+      <CardContent className="pt-0 space-y-1.5 pb-4">
         {/* Column headers */}
-        <div className="flex items-center gap-2">
-          <span className="w-6 shrink-0" />
+        <div className="flex items-center gap-2 pl-2">
+          <span className="w-6 shrink-0" /> {/* completion toggle */}
+          <span className="w-5 shrink-0" /> {/* set number */}
           <span className="flex-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             kg
           </span>
@@ -458,6 +566,7 @@ function ExerciseCard({
             canDelete={entry.sets.length > 1}
             onChange={(field, value) => onUpdateSet(set.localId, field, value)}
             onDelete={() => onRemoveSet(set.localId)}
+            onToggleDone={() => onToggleSetDone(set.localId)}
           />
         ))}
 
@@ -524,9 +633,6 @@ export default function LogWorkoutContent() {
   // Picker state
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  // Routine loader UI
-  const [routineLoaderOpen, setRoutineLoaderOpen] = useState(false);
-
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -550,6 +656,20 @@ export default function LogWorkoutContent() {
     [exercises]
   );
 
+  // Derived session progress
+  const activeExercises = useMemo(
+    () => exercises.filter((e) => !e.skipped),
+    [exercises]
+  );
+  const totalSets = useMemo(
+    () => activeExercises.reduce((a, e) => a + e.sets.length, 0),
+    [activeExercises]
+  );
+  const doneSets = useMemo(
+    () => exercises.reduce((a, e) => a + e.sets.filter((s) => s.done).length, 0),
+    [exercises]
+  );
+
   // ── Exercise mutations ───────────────────────────────────────────────────
 
   const addExercise = useCallback((ex: PickerExercise) => {
@@ -562,6 +682,7 @@ export default function LogWorkoutContent() {
         exerciseName: ex.exerciseName,
         sets: prefill ? prefill.sets : [emptySet()],
         prefilledFromDate: prefill?.fromDate,
+        skipped: false,
       },
     ]);
     setPickerOpen(false);
@@ -569,6 +690,14 @@ export default function LogWorkoutContent() {
 
   const removeExercise = useCallback((localId: string) => {
     setExercises((prev) => prev.filter((e) => e.localId !== localId));
+  }, []);
+
+  const skipExercise = useCallback((localId: string) => {
+    setExercises((prev) =>
+      prev.map((e) =>
+        e.localId === localId ? { ...e, skipped: !e.skipped } : e
+      )
+    );
   }, []);
 
   const addSet = useCallback((exerciseLocalId: string) => {
@@ -592,7 +721,12 @@ export default function LogWorkoutContent() {
   }, []);
 
   const updateSet = useCallback(
-    (exerciseLocalId: string, setLocalId: string, field: keyof SetRow, value: string) => {
+    (
+      exerciseLocalId: string,
+      setLocalId: string,
+      field: EditableSetField,
+      value: string
+    ) => {
       setExercises((prev) =>
         prev.map((e) =>
           e.localId === exerciseLocalId
@@ -609,7 +743,25 @@ export default function LogWorkoutContent() {
     []
   );
 
-  // Load all exercises from a routine, pre-filling from last session where available
+  const toggleSetDone = useCallback(
+    (exerciseLocalId: string, setLocalId: string) => {
+      setExercises((prev) =>
+        prev.map((e) =>
+          e.localId === exerciseLocalId
+            ? {
+                ...e,
+                sets: e.sets.map((s) =>
+                  s.localId === setLocalId ? { ...s, done: !s.done } : s
+                ),
+              }
+            : e
+        )
+      );
+    },
+    []
+  );
+
+  // Load all exercises from a routine, pre-filling from last session
   const loadRoutine = useCallback(
     (routine: Routine) => {
       const entries: ExerciseEntry[] = routine.exercises
@@ -623,6 +775,7 @@ export default function LogWorkoutContent() {
               exerciseName: re.exerciseName,
               sets: prefill.sets,
               prefilledFromDate: prefill.fromDate,
+              skipped: false,
             };
           }
           const parsedReps = parseInt(re.targetReps);
@@ -636,11 +789,12 @@ export default function LogWorkoutContent() {
               reps: !isNaN(parsedReps) ? String(parsedReps) : "",
               rpe: "",
               notes: "",
+              done: false,
             })),
+            skipped: false,
           };
         });
       setExercises(entries);
-      setRoutineLoaderOpen(false);
     },
     [workoutLogs]
   );
@@ -648,21 +802,28 @@ export default function LogWorkoutContent() {
   // ── Save ────────────────────────────────────────────────────────────────
 
   const handleSave = useCallback(() => {
-    if (exercises.length === 0) {
+    // Only consider non-skipped exercises
+    const active = exercises.filter((e) => !e.skipped);
+
+    if (active.length === 0) {
       toast.error("Add at least one exercise before saving.");
       return;
     }
 
-    const validExercises = exercises.filter((e) =>
+    const validExercises = active.filter((e) =>
       e.sets.some((s) => s.reps !== "" && parseInt(s.reps) > 0)
     );
 
     if (validExercises.length === 0) {
-      toast.error("Each exercise needs at least one set with reps logged.");
+      toast.error("Log at least one set with reps before saving.");
       return;
     }
 
-    const totalSets = validExercises.reduce((acc, e) => acc + e.sets.length, 0);
+    const savedSets = validExercises.reduce(
+      (acc, e) =>
+        acc + e.sets.filter((s) => s.reps !== "" || s.weight !== "").length,
+      0
+    );
 
     addWorkoutLog({
       date,
@@ -688,9 +849,15 @@ export default function LogWorkoutContent() {
       })),
     });
 
+    const skippedCount = exercises.filter((e) => e.skipped).length;
     toast.success(
-      `Workout saved! ${validExercises.length} exercise${validExercises.length !== 1 ? "s" : ""}, ${totalSets} sets`,
-      { description: format(new Date(), "EEEE, MMMM d") }
+      `Workout saved — ${validExercises.length} exercise${validExercises.length !== 1 ? "s" : ""}, ${savedSets} sets`,
+      {
+        description:
+          skippedCount > 0
+            ? `${skippedCount} skipped exercise${skippedCount !== 1 ? "s" : ""} not included`
+            : format(new Date(), "EEEE, MMMM d"),
+      }
     );
 
     // Reset session
@@ -706,21 +873,22 @@ export default function LogWorkoutContent() {
   if (!mounted) {
     return (
       <div className="p-4 space-y-4 max-w-lg mx-auto animate-pulse">
+        <div className="h-10 rounded-xl bg-muted" />
         <div className="h-28 rounded-xl bg-muted" />
         <div className="h-10 rounded-xl bg-muted" />
-        <div className="h-40 rounded-xl bg-muted" />
-        <div className="h-12 rounded-xl bg-muted" />
+        <div className="h-48 rounded-xl bg-muted" />
+        <div className="h-14 rounded-xl bg-muted" />
       </div>
     );
   }
 
-  const totalSetsLogged = exercises.reduce((a, e) => a + e.sets.length, 0);
+  const skippedCount = exercises.filter((e) => e.skipped).length;
 
   return (
     <>
-      <div className="p-4 pb-8 space-y-5 max-w-lg mx-auto">
+      <div className="p-4 pb-10 space-y-5 max-w-lg mx-auto">
 
-        {/* ── Page title ─────────────────────────────────── */}
+        {/* ── Page header ─────────────────────────────────── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
             <button
@@ -732,9 +900,13 @@ export default function LogWorkoutContent() {
             </button>
             <h1 className="text-xl font-bold">Log Workout</h1>
           </div>
+
           {exercises.length > 0 && (
-            <Badge variant="secondary">
-              {exercises.length} ex · {totalSetsLogged} sets
+            <Badge
+              variant={doneSets > 0 && doneSets === totalSets ? "default" : "secondary"}
+              className="tabular-nums"
+            >
+              {doneSets > 0 ? `${doneSets}/${totalSets} done` : `${activeExercises.length} ex · ${totalSets} sets`}
             </Badge>
           )}
         </div>
@@ -776,13 +948,13 @@ export default function LogWorkoutContent() {
 
             {/* Notes */}
             <div className="space-y-1.5">
-              <Label htmlFor="session-notes">Session Notes (optional)</Label>
+              <Label htmlFor="session-notes">Notes (optional)</Label>
               <Textarea
                 id="session-notes"
-                placeholder="How are you feeling? Any PRs today?"
+                placeholder="How did it feel? Any PRs?"
                 value={sessionNotes}
                 onChange={(e) => setSessionNotes(e.target.value)}
-                className="min-h-[60px]"
+                className="min-h-[56px] resize-none"
               />
             </div>
           </CardContent>
@@ -793,7 +965,7 @@ export default function LogWorkoutContent() {
           <div>
             <div className="flex items-center gap-2">
               <Separator className="flex-1" />
-              <span className="text-xs text-muted-foreground shrink-0">or load a routine</span>
+              <span className="text-xs text-muted-foreground shrink-0 px-1">or load a routine</span>
               <Separator className="flex-1" />
             </div>
 
@@ -802,11 +974,11 @@ export default function LogWorkoutContent() {
                 <button
                   key={r.id}
                   onClick={() => loadRoutine(r)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border hover:bg-accent transition-colors text-left"
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border border-border hover:bg-accent active:bg-accent transition-colors text-left"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{r.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm font-semibold truncate">{r.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {r.exercises.length} exercise
                       {r.exercises.length !== 1 ? "s" : ""}
                     </p>
@@ -818,34 +990,49 @@ export default function LogWorkoutContent() {
           </div>
         )}
 
-        {/* ── Exercise entries ─────────────────────────── */}
+        {/* ── Exercise list ────────────────────────────── */}
         {exercises.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2">
+            {/* Section label */}
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                Exercises
+              </span>
+              {skippedCount > 0 && (
+                <span className="text-[11px] text-muted-foreground">
+                  {skippedCount} skipped
+                </span>
+              )}
+            </div>
+
+            {/* Cards */}
             {exercises.map((entry) => (
               <ExerciseCard
                 key={entry.localId}
                 entry={entry}
                 onRemove={() => removeExercise(entry.localId)}
+                onSkip={() => skipExercise(entry.localId)}
                 onAddSet={() => addSet(entry.localId)}
                 onRemoveSet={(sid) => removeSet(entry.localId, sid)}
                 onUpdateSet={(sid, field, val) =>
                   updateSet(entry.localId, sid, field, val)
                 }
+                onToggleSetDone={(sid) => toggleSetDone(entry.localId, sid)}
               />
             ))}
 
-            {/* Reset link */}
+            {/* Reset session */}
             <button
               onClick={() => setExercises([])}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mx-auto"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors mx-auto pt-1"
             >
               <RotateCcw className="h-3 w-3" />
-              Clear all exercises
+              Clear session
             </button>
           </div>
         )}
 
-        {/* ── Add Exercise button ──────────────────────── */}
+        {/* ── Add Exercise ─────────────────────────────── */}
         <Button
           variant="outline"
           className="w-full h-12 gap-2 border-dashed"
@@ -855,14 +1042,16 @@ export default function LogWorkoutContent() {
           Add Exercise
         </Button>
 
-        {/* ── Save button ──────────────────────────────── */}
+        {/* ── Save ─────────────────────────────────────── */}
         <Button
           className="w-full h-14 text-base font-semibold gap-2"
           size="lg"
           onClick={handleSave}
-          disabled={exercises.length === 0}
+          disabled={activeExercises.length === 0}
         >
-          Save Workout
+          {activeExercises.length > 0
+            ? `Save Workout · ${activeExercises.length} exercise${activeExercises.length !== 1 ? "s" : ""}`
+            : "Save Workout"}
         </Button>
       </div>
 
