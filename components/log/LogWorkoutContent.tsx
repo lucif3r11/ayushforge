@@ -425,7 +425,7 @@ function SetRowComponent({
         onClick={onDelete}
         disabled={!canDelete}
         className={cn(
-          "h-10 w-10 flex items-center justify-center rounded-lg shrink-0 transition-colors",
+          "h-10 w-9 flex items-center justify-center rounded-lg shrink-0 transition-colors",
           canDelete
             ? "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             : "text-muted-foreground/30 pointer-events-none"
@@ -485,7 +485,7 @@ function ExerciseCard({
   return (
     <Card className={cn(allDone && "border-green-500/30")}>
       {/* Exercise header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+      <div className="flex items-center justify-between px-4 pt-4 pb-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Dumbbell
@@ -540,9 +540,9 @@ function ExerciseCard({
         </div>
       )}
 
-      <CardContent className="pt-0 space-y-1.5 pb-4">
+      <CardContent className="pt-0 space-y-2 pb-5">
         {/* Column headers */}
-        <div className="flex items-center gap-2 pl-2">
+        <div className="flex items-center gap-2 px-1 mb-1">
           <span className="w-6 shrink-0" /> {/* completion toggle */}
           <span className="w-5 shrink-0" /> {/* set number */}
           <span className="flex-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -554,7 +554,7 @@ function ExerciseCard({
           <span className="w-16 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">
             rpe
           </span>
-          <span className="w-10 shrink-0" />
+          <span className="w-9 shrink-0" />
         </div>
 
         {/* Set rows */}
@@ -916,8 +916,8 @@ export default function LogWorkoutContent() {
 
         {/* ── Session info card ────────────────────────── */}
         <Card>
-          <CardContent className="pt-5 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+          <CardContent className="pt-5 space-y-5">
+            <div className="grid grid-cols-2 gap-4">
               {/* Date */}
               <div className="space-y-1.5">
                 <Label htmlFor="session-date">Date</Label>
@@ -969,7 +969,7 @@ export default function LogWorkoutContent() {
               <Separator className="flex-1" />
             </div>
 
-            <div className="mt-3 space-y-2">
+            <div className="mt-4 space-y-2.5">
               {blockRoutines.map((r) => (
                 <button
                   key={r.id}

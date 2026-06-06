@@ -336,7 +336,7 @@ function CreateBlockForm({ onClose }: { onClose: () => void }) {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">New Training Block</CardTitle>
           <button
@@ -347,7 +347,7 @@ function CreateBlockForm({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <div className="space-y-1.5">
           <Label>Block Name</Label>
           <Input
@@ -370,7 +370,7 @@ function CreateBlockForm({ onClose }: { onClose: () => void }) {
           {errors.goal && <p className="text-xs text-destructive">{errors.goal}</p>}
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Start Date</Label>
             <Input
@@ -392,7 +392,7 @@ function CreateBlockForm({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <label className="flex items-center gap-2.5 cursor-pointer select-none py-0.5">
+        <label className="flex items-center gap-2.5 cursor-pointer select-none py-2">
           <input
             type="checkbox"
             checked={makeActive}
@@ -402,7 +402,7 @@ function CreateBlockForm({ onClose }: { onClose: () => void }) {
           <span className="text-sm">Set as active block</span>
         </label>
 
-        <div className="flex gap-2 pt-1">
+        <div className="flex gap-2 pt-3">
           <Button variant="outline" size="sm" className="flex-1" onClick={onClose}>
             Cancel
           </Button>
