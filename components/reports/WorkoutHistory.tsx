@@ -10,6 +10,7 @@ import {
   Check,
   X,
   Dumbbell,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
@@ -20,7 +21,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { cn, isBodyweightExercise } from "@/lib/utils";
 import type { WorkoutLog, SetType } from "@/lib/types";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10);
+}
 
 // ─── Editable types ───────────────────────────────────────────────────────────
 
@@ -88,9 +96,9 @@ function applyEdit(original: WorkoutLog, editable: EditWorkout): Omit<WorkoutLog
       exerciseId: ex.exerciseId,
       exerciseName: ex.exerciseName,
       notes: ex.notes.trim() || undefined,
-      sets: ex.sets.map((s) => ({
+      sets: ex.sets.map((s, i) => ({
         id: s.id,
-        setNumber: s.setNumber,
+        setNumber: i + 1,
         type: s.type,
         weight: parseFloat(s.weight) || 0,
         reps: parseInt(s.reps) || 0,
@@ -139,11 +147,17 @@ function WorkoutItem({
 
   const saveEdit = useCallback(() => {
     if (!draft) return;
+    if (draft.exercises.length === 0) {
+      toast.error("A workout must have at least one exercise.");
+      return;
+    }
     onUpdate(applyEdit(log, draft));
     setDraft(null);
     setEditing(false);
     toast.success("Workout updated!");
   }, [draft, log, onUpdate]);
+
+  // ── Draft patchers ──────────────────────────────────────────────────────────
 
   const patchDraft = useCallback(
     <K extends keyof Pick<EditWorkout, "date" | "durationMinutes" | "notes">>(
@@ -182,9 +196,53 @@ function WorkoutItem({
     []
   );
 
+  const removeExercise = useCallback((exIdx: number) => {
+    setDraft((d) => {
+      if (!d) return d;
+      return { ...d, exercises: d.exercises.filter((_, i) => i !== exIdx) };
+    });
+  }, []);
+
+  const removeSet = useCallback((exIdx: number, setIdx: number) => {
+    setDraft((d) => {
+      if (!d) return d;
+      return {
+        ...d,
+        exercises: d.exercises.map((ex, ei) =>
+          ei !== exIdx
+            ? ex
+            : { ...ex, sets: ex.sets.filter((_, si) => si !== setIdx) }
+        ),
+      };
+    });
+  }, []);
+
+  const addSet = useCallback((exIdx: number) => {
+    setDraft((d) => {
+      if (!d) return d;
+      const ex = d.exercises[exIdx];
+      const lastSet = ex.sets[ex.sets.length - 1];
+      const newSet: EditSet = {
+        id: uid(),
+        setNumber: ex.sets.length + 1,
+        type: "normal",
+        weight: lastSet?.weight ?? "",
+        reps: lastSet?.reps ?? "",
+        rpe: "",
+        notes: "",
+      };
+      return {
+        ...d,
+        exercises: d.exercises.map((e, ei) =>
+          ei !== exIdx ? e : { ...e, sets: [...e.sets, newSet] }
+        ),
+      };
+    });
+  }, []);
+
   return (
     <Card>
-      {/* Collapsed header — hide when in edit mode to avoid double header */}
+      {/* Collapsed header — hide when in edit mode */}
       {!editing && (
         <button
           onClick={() => { setExpanded((v) => !v); setConfirmDelete(false); }}
@@ -209,9 +267,10 @@ function WorkoutItem({
             </p>
           </div>
           <ChevronRight
-            className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${
-              expanded ? "rotate-90" : ""
-            }`}
+            className={cn(
+              "h-4 w-4 text-muted-foreground shrink-0 transition-transform",
+              expanded && "rotate-90"
+            )}
           />
         </button>
       )}
@@ -229,17 +288,12 @@ function WorkoutItem({
                 <div>
                   <p className="text-sm font-semibold text-destructive">Delete this workout?</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Are you sure you want to permanently delete this workout? This cannot be undone.
+                    This permanently removes the session and cannot be undone.
                   </p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setConfirmDelete(false)}
-                >
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => setConfirmDelete(false)}>
                   Cancel
                 </Button>
                 <Button size="sm" variant="destructive" className="flex-1" onClick={onDelete}>
@@ -251,115 +305,175 @@ function WorkoutItem({
 
           {editing && draft ? (
             // ── Edit mode ──────────────────────────────────────────────────
-            <CardContent className="pt-4 pb-4 space-y-4">
+            <CardContent className="pt-5 pb-5 space-y-5">
+              {/* Edit header */}
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">Edit Workout</p>
                 <button
                   onClick={cancelEdit}
                   className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+                  aria-label="Cancel edit"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
 
-              {/* Meta */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Date</Label>
+              {/* Date + Duration */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5 min-w-0">
+                  <Label className="text-xs font-medium">Date</Label>
                   <Input
                     type="date"
                     value={draft.date}
                     onChange={(e) => patchDraft("date", e.target.value)}
-                    className="h-9 text-sm"
+                    className="h-10 text-sm"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Duration (min)</Label>
+                <div className="space-y-1.5 min-w-0">
+                  <Label className="text-xs font-medium">Duration</Label>
                   <Input
                     type="number"
                     value={draft.durationMinutes}
                     onChange={(e) => patchDraft("durationMinutes", e.target.value)}
-                    placeholder="—"
-                    className="h-9 text-sm"
+                    placeholder="minutes"
+                    className="h-10 text-sm"
                     min="1"
                   />
                 </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Notes</Label>
+
+              {/* Notes */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Notes</Label>
                 <Textarea
                   value={draft.notes}
                   onChange={(e) => patchDraft("notes", e.target.value)}
                   placeholder="Session notes…"
-                  className="min-h-[52px] text-sm"
+                  className="min-h-[52px] text-sm resize-none"
                 />
               </div>
 
-              {/* Per-exercise sets */}
-              {draft.exercises.map((ex, exIdx) => (
-                <div key={ex.id} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Dumbbell className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <p className="text-sm font-semibold">{ex.exerciseName}</p>
-                  </div>
-                  {/* Column labels */}
-                  <div className="flex items-center gap-2 pl-5">
-                    <span className="w-5 text-[10px] text-muted-foreground shrink-0">#</span>
-                    <span className="flex-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      kg
-                    </span>
-                    <span className="flex-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      reps
-                    </span>
-                    <span className="w-16 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">
-                      rpe
-                    </span>
-                  </div>
-                  {ex.sets.map((s, setIdx) => (
-                    <div key={s.id} className="flex items-center gap-2 pl-5">
-                      <span className="text-xs text-muted-foreground w-5 text-right shrink-0">
-                        {setIdx + 1}
-                      </span>
-                      <Input
-                        type="number"
-                        value={s.weight}
-                        onChange={(e) => patchSet(exIdx, setIdx, "weight", e.target.value)}
-                        className="h-9 text-center text-sm"
-                        placeholder="kg"
-                        min="0"
-                        step="0.5"
-                      />
-                      <Input
-                        type="number"
-                        value={s.reps}
-                        onChange={(e) => patchSet(exIdx, setIdx, "reps", e.target.value)}
-                        className="h-9 text-center text-sm"
-                        placeholder="reps"
-                        min="0"
-                      />
-                      <Input
-                        type="number"
-                        value={s.rpe}
-                        onChange={(e) => patchSet(exIdx, setIdx, "rpe", e.target.value)}
-                        className="h-9 text-center text-sm w-16 shrink-0"
-                        placeholder="RPE"
-                        min="1"
-                        max="10"
-                        step="0.5"
-                      />
+              {/* Per-exercise blocks */}
+              {draft.exercises.map((ex, exIdx) => {
+                const bw = isBodyweightExercise(ex.exerciseName);
+                return (
+                  <div key={ex.id} className="space-y-2 rounded-xl border border-border/60 p-3">
+                    {/* Exercise header */}
+                    <div className="flex items-center gap-2">
+                      <Dumbbell className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <p className="text-sm font-semibold flex-1 truncate">{ex.exerciseName}</p>
+                      {bw && (
+                        <span className="text-[10px] font-semibold text-muted-foreground bg-muted rounded px-1.5 py-0.5 shrink-0">
+                          BW
+                        </span>
+                      )}
+                      <button
+                        onClick={() => removeExercise(exIdx)}
+                        className="h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                        aria-label={`Remove ${ex.exerciseName}`}
+                        title="Remove exercise"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                  ))}
-                </div>
-              ))}
+
+                    {/* Column labels */}
+                    <div className="flex items-center gap-2 pl-1">
+                      <span className="w-5 text-[10px] text-muted-foreground shrink-0">#</span>
+                      <span className={cn(
+                        "flex-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground",
+                        bw && "opacity-0 pointer-events-none"
+                      )}>
+                        kg
+                      </span>
+                      <span className="flex-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        reps
+                      </span>
+                      <span className="w-14 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">
+                        rpe
+                      </span>
+                      <span className="w-7 shrink-0" />
+                    </div>
+
+                    {/* Set rows */}
+                    {ex.sets.map((s, setIdx) => (
+                      <div key={s.id} className="flex items-center gap-2 pl-1">
+                        <span className="text-xs text-muted-foreground w-5 text-right shrink-0 tabular-nums">
+                          {setIdx + 1}
+                        </span>
+                        {/* Weight or BW badge */}
+                        {bw ? (
+                          <div className="flex-1 flex items-center justify-center">
+                            <span className="text-xs font-semibold text-muted-foreground bg-muted rounded-md px-2 py-1.5">
+                              BW
+                            </span>
+                          </div>
+                        ) : (
+                          <Input
+                            type="number"
+                            value={s.weight}
+                            onChange={(e) => patchSet(exIdx, setIdx, "weight", e.target.value)}
+                            className="h-9 text-center text-sm"
+                            placeholder="kg"
+                            min="0"
+                            step="0.5"
+                          />
+                        )}
+                        <Input
+                          type="number"
+                          value={s.reps}
+                          onChange={(e) => patchSet(exIdx, setIdx, "reps", e.target.value)}
+                          className="h-9 text-center text-sm"
+                          placeholder="reps"
+                          min="0"
+                        />
+                        <Input
+                          type="number"
+                          value={s.rpe}
+                          onChange={(e) => patchSet(exIdx, setIdx, "rpe", e.target.value)}
+                          className="h-9 text-center text-sm w-14 shrink-0"
+                          placeholder="RPE"
+                          min="1"
+                          max="10"
+                          step="0.5"
+                        />
+                        <button
+                          onClick={() => removeSet(exIdx, setIdx)}
+                          disabled={ex.sets.length <= 1}
+                          className={cn(
+                            "h-9 w-7 flex items-center justify-center rounded-lg shrink-0 transition-colors",
+                            ex.sets.length > 1
+                              ? "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              : "text-muted-foreground/20 pointer-events-none"
+                          )}
+                          aria-label="Remove set"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Add set */}
+                    <button
+                      onClick={() => addSet(exIdx)}
+                      className="w-full flex items-center justify-center gap-1.5 h-8 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors mt-1"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add Set
+                    </button>
+                  </div>
+                );
+              })}
+
+              {draft.exercises.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  All exercises removed — saving will delete this workout.
+                </p>
+              )}
 
               {/* Edit actions */}
               <div className="flex gap-2 pt-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 gap-1.5"
-                  onClick={cancelEdit}
-                >
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={cancelEdit}>
                   Cancel
                 </Button>
                 <Button size="sm" className="flex-1 gap-1.5" onClick={saveEdit}>
@@ -377,28 +491,36 @@ function WorkoutItem({
                 </p>
               )}
 
-              {log.exercises.map((ex) => (
-                <div key={ex.id}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <Dumbbell className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <p className="text-xs font-semibold">{ex.exerciseName}</p>
-                  </div>
-                  <div className="space-y-0.5 pl-5">
-                    {ex.sets.map((s, i) => (
-                      <div
-                        key={s.id}
-                        className="flex items-center gap-2 text-xs text-muted-foreground"
-                      >
-                        <span className="w-4 text-right">{i + 1}.</span>
-                        <span className="font-medium text-foreground">
-                          {s.weight > 0 ? `${s.weight} kg` : "BW"} × {s.reps}
+              {log.exercises.map((ex) => {
+                const bw = isBodyweightExercise(ex.exerciseName);
+                return (
+                  <div key={ex.id}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Dumbbell className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <p className="text-xs font-semibold">{ex.exerciseName}</p>
+                      {bw && (
+                        <span className="text-[10px] font-semibold text-muted-foreground bg-muted rounded px-1.5 py-0.5">
+                          BW
                         </span>
-                        {s.rpe !== undefined && <span>· RPE {s.rpe}</span>}
-                      </div>
-                    ))}
+                      )}
+                    </div>
+                    <div className="space-y-0.5 pl-5">
+                      {ex.sets.map((s, i) => (
+                        <div
+                          key={s.id}
+                          className="flex items-center gap-2 text-xs text-muted-foreground"
+                        >
+                          <span className="w-4 text-right">{i + 1}.</span>
+                          <span className="font-medium text-foreground">
+                            {bw || s.weight === 0 ? "BW" : `${s.weight} kg`} × {s.reps}
+                          </span>
+                          {s.rpe !== undefined && <span>· RPE {s.rpe}</span>}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Action row */}
               {!confirmDelete && (

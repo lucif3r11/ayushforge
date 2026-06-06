@@ -28,7 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+import { cn, isBodyweightExercise } from "@/lib/utils";
 import type { SetType, Routine, WorkoutLog } from "@/lib/types";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
@@ -336,6 +336,7 @@ function SetRowComponent({
   onDelete,
   onToggleDone,
   canDelete,
+  isBodyweight,
 }: {
   index: number;
   set: SetRow;
@@ -343,6 +344,7 @@ function SetRowComponent({
   onDelete: () => void;
   onToggleDone: () => void;
   canDelete: boolean;
+  isBodyweight?: boolean;
 }) {
   return (
     <div
@@ -375,20 +377,28 @@ function SetRowComponent({
         {index + 1}
       </span>
 
-      {/* Weight */}
-      <Input
-        type="number"
-        inputMode="decimal"
-        placeholder="kg"
-        value={set.weight}
-        onChange={(e) => onChange("weight", e.target.value)}
-        className={cn(
-          "h-10 text-center px-2 text-sm font-medium min-w-0 transition-opacity",
-          set.done && "opacity-60"
-        )}
-        min="0"
-        step="0.5"
-      />
+      {/* Weight or BW badge */}
+      {isBodyweight ? (
+        <div className="flex-1 flex items-center justify-center">
+          <span className="text-xs font-semibold text-muted-foreground bg-muted rounded-md px-2 py-1">
+            BW
+          </span>
+        </div>
+      ) : (
+        <Input
+          type="number"
+          inputMode="decimal"
+          placeholder="kg"
+          value={set.weight}
+          onChange={(e) => onChange("weight", e.target.value)}
+          className={cn(
+            "h-10 text-center px-2 text-sm font-medium min-w-0 transition-opacity",
+            set.done && "opacity-60"
+          )}
+          min="0"
+          step="0.5"
+        />
+      )}
 
       {/* Reps */}
       <Input
@@ -447,6 +457,7 @@ function ExerciseCard({
   onRemoveSet,
   onUpdateSet,
   onToggleSetDone,
+  isBodyweight,
 }: {
   entry: ExerciseEntry;
   onRemove: () => void;
@@ -455,6 +466,7 @@ function ExerciseCard({
   onRemoveSet: (setLocalId: string) => void;
   onUpdateSet: (setLocalId: string, field: EditableSetField, value: string) => void;
   onToggleSetDone: (setLocalId: string) => void;
+  isBodyweight?: boolean;
 }) {
   const doneCount = entry.sets.filter((s) => s.done).length;
   const allDone = doneCount === entry.sets.length && entry.sets.length > 0;
@@ -546,7 +558,7 @@ function ExerciseCard({
           <span className="w-6 shrink-0" /> {/* completion toggle */}
           <span className="w-5 shrink-0" /> {/* set number */}
           <span className="flex-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            kg
+            {isBodyweight ? "bw" : "kg"}
           </span>
           <span className="flex-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             reps
@@ -567,6 +579,7 @@ function ExerciseCard({
             onChange={(field, value) => onUpdateSet(set.localId, field, value)}
             onDelete={() => onRemoveSet(set.localId)}
             onToggleDone={() => onToggleSetDone(set.localId)}
+            isBodyweight={isBodyweight}
           />
         ))}
 
@@ -917,31 +930,31 @@ export default function LogWorkoutContent() {
         {/* ── Session info card ────────────────────────── */}
         <Card>
           <CardContent className="pt-6 pb-6 space-y-5">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               {/* Date */}
-              <div className="space-y-2">
-                <Label htmlFor="session-date">Date</Label>
+              <div className="space-y-1.5 min-w-0">
+                <Label htmlFor="session-date" className="text-xs font-medium">Date</Label>
                 <Input
                   id="session-date"
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="h-11"
+                  className="h-11 text-sm"
                 />
               </div>
 
               {/* Duration */}
-              <div className="space-y-2">
-                <Label htmlFor="session-duration">Duration (min)</Label>
+              <div className="space-y-1.5 min-w-0">
+                <Label htmlFor="session-duration" className="text-xs font-medium">Duration</Label>
                 <Input
                   id="session-duration"
                   type="number"
                   inputMode="numeric"
-                  placeholder="e.g. 60"
+                  placeholder="minutes"
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
                   min="1"
-                  className="h-11"
+                  className="h-11 text-sm"
                 />
               </div>
             </div>
@@ -1006,20 +1019,25 @@ export default function LogWorkoutContent() {
             </div>
 
             {/* Cards */}
-            {exercises.map((entry) => (
-              <ExerciseCard
-                key={entry.localId}
-                entry={entry}
-                onRemove={() => removeExercise(entry.localId)}
-                onSkip={() => skipExercise(entry.localId)}
-                onAddSet={() => addSet(entry.localId)}
-                onRemoveSet={(sid) => removeSet(entry.localId, sid)}
-                onUpdateSet={(sid, field, val) =>
-                  updateSet(entry.localId, sid, field, val)
-                }
-                onToggleSetDone={(sid) => toggleSetDone(entry.localId, sid)}
-              />
-            ))}
+            {exercises.map((entry) => {
+              const exRecord = allExercises.find((e) => e.id === entry.exerciseId);
+              const bw = isBodyweightExercise(entry.exerciseName, exRecord?.category);
+              return (
+                <ExerciseCard
+                  key={entry.localId}
+                  entry={entry}
+                  isBodyweight={bw}
+                  onRemove={() => removeExercise(entry.localId)}
+                  onSkip={() => skipExercise(entry.localId)}
+                  onAddSet={() => addSet(entry.localId)}
+                  onRemoveSet={(sid) => removeSet(entry.localId, sid)}
+                  onUpdateSet={(sid, field, val) =>
+                    updateSet(entry.localId, sid, field, val)
+                  }
+                  onToggleSetDone={(sid) => toggleSetDone(entry.localId, sid)}
+                />
+              );
+            })}
 
             {/* Reset session */}
             <button
