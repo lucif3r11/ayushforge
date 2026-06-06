@@ -886,7 +886,7 @@ export default function LogWorkoutContent() {
 
   return (
     <>
-      <div className="p-4 pb-10 space-y-5 max-w-lg mx-auto">
+      <div className="px-4 pt-6 pb-12 space-y-6 max-w-lg mx-auto">
 
         {/* ── Page header ─────────────────────────────────── */}
         <div className="flex items-center justify-between">
@@ -916,22 +916,22 @@ export default function LogWorkoutContent() {
 
         {/* ── Session info card ────────────────────────── */}
         <Card>
-          <CardContent className="pt-5 space-y-5">
+          <CardContent className="pt-6 pb-6 space-y-5">
             <div className="grid grid-cols-2 gap-4">
               {/* Date */}
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="session-date">Date</Label>
                 <Input
                   id="session-date"
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="h-10"
+                  className="h-11"
                 />
               </div>
 
               {/* Duration */}
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="session-duration">Duration (min)</Label>
                 <Input
                   id="session-duration"
@@ -941,20 +941,20 @@ export default function LogWorkoutContent() {
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
                   min="1"
-                  className="h-10"
+                  className="h-11"
                 />
               </div>
             </div>
 
             {/* Notes */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="session-notes">Notes (optional)</Label>
               <Textarea
                 id="session-notes"
                 placeholder="How did it feel? Any PRs?"
                 value={sessionNotes}
                 onChange={(e) => setSessionNotes(e.target.value)}
-                className="min-h-[56px] resize-none"
+                className="min-h-[80px] resize-none"
               />
             </div>
           </CardContent>
@@ -974,7 +974,7 @@ export default function LogWorkoutContent() {
                 <button
                   key={r.id}
                   onClick={() => loadRoutine(r)}
-                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border border-border hover:bg-accent active:bg-accent transition-colors text-left"
+                  className="w-full flex items-center justify-between px-4 py-4 rounded-xl border border-border hover:bg-accent active:bg-accent transition-colors text-left"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-semibold truncate">{r.name}</p>
@@ -992,7 +992,7 @@ export default function LogWorkoutContent() {
 
         {/* ── Exercise list ────────────────────────────── */}
         {exercises.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {/* Section label */}
             <div className="flex items-center justify-between px-1">
               <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">

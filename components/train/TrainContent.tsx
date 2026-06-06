@@ -347,39 +347,40 @@ function CreateBlockForm({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-1.5">
+      <CardContent className="space-y-5">
+        <div className="space-y-2">
           <Label>Block Name</Label>
           <Input
             placeholder="e.g. PPL Power Phase"
             value={name}
             onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: "" })); }}
-            className={errors.name ? "border-destructive" : ""}
+            className={`h-11${errors.name ? " border-destructive" : ""}`}
           />
           {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <Label>Goal</Label>
           <Input
             placeholder="e.g. Build strength and muscle"
             value={goal}
             onChange={(e) => { setGoal(e.target.value); setErrors((p) => ({ ...p, goal: "" })); }}
-            className={errors.goal ? "border-destructive" : ""}
+            className={`h-11${errors.goal ? " border-destructive" : ""}`}
           />
           {errors.goal && <p className="text-xs text-destructive">{errors.goal}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label>Start Date</Label>
             <Input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
+              className="h-11"
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label className="flex gap-1">
               End Date
               <span className="text-muted-foreground font-normal">(opt)</span>
@@ -388,11 +389,12 @@ function CreateBlockForm({ onClose }: { onClose: () => void }) {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
+              className="h-11"
             />
           </div>
         </div>
 
-        <label className="flex items-center gap-2.5 cursor-pointer select-none py-2">
+        <label className="flex items-center gap-3 cursor-pointer select-none py-1">
           <input
             type="checkbox"
             checked={makeActive}
@@ -402,11 +404,11 @@ function CreateBlockForm({ onClose }: { onClose: () => void }) {
           <span className="text-sm">Set as active block</span>
         </label>
 
-        <div className="flex gap-2 pt-3">
-          <Button variant="outline" size="sm" className="flex-1" onClick={onClose}>
+        <div className="flex gap-3 pt-2">
+          <Button variant="outline" className="flex-1" onClick={onClose}>
             Cancel
           </Button>
-          <Button size="sm" className="flex-1" onClick={handleSubmit}>
+          <Button className="flex-1" onClick={handleSubmit}>
             Create Block
           </Button>
         </div>
@@ -519,15 +521,16 @@ export default function TrainContent() {
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-bold">Train</h1>
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5"
-            onClick={() => setCreating((v) => !v)}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {creating ? "Cancel" : "New Block"}
-          </Button>
+          {creating ? (
+            <Button size="sm" variant="outline" onClick={() => setCreating(false)}>
+              Cancel
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setCreating(true)}>
+              <Plus className="h-3.5 w-3.5" />
+              New Block
+            </Button>
+          )}
           <Link href="/log">
             <Button size="sm" variant="outline" className="gap-1.5">
               <Dumbbell className="h-3.5 w-3.5" />
