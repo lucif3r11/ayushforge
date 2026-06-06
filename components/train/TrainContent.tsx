@@ -336,44 +336,51 @@ function CreateBlockForm({ onClose }: { onClose: () => void }) {
 
   return (
     <Card>
-      <CardHeader className="pb-4">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">New Training Block</CardTitle>
+          <CardTitle className="text-lg">New Training Block</CardTitle>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-5">
+
+      <CardContent className="space-y-5 pb-6">
+        {/* Block Name */}
         <div className="space-y-2">
-          <Label>Block Name</Label>
+          <Label htmlFor="block-name">Block Name</Label>
           <Input
+            id="block-name"
             placeholder="e.g. PPL Power Phase"
             value={name}
             onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: "" })); }}
             className={`h-11${errors.name ? " border-destructive" : ""}`}
           />
-          {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+          {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
         </div>
 
+        {/* Goal */}
         <div className="space-y-2">
-          <Label>Goal</Label>
+          <Label htmlFor="block-goal">Goal</Label>
           <Input
+            id="block-goal"
             placeholder="e.g. Build strength and muscle"
             value={goal}
             onChange={(e) => { setGoal(e.target.value); setErrors((p) => ({ ...p, goal: "" })); }}
             className={`h-11${errors.goal ? " border-destructive" : ""}`}
           />
-          {errors.goal && <p className="text-xs text-destructive">{errors.goal}</p>}
+          {errors.goal && <p className="text-xs text-destructive mt-1">{errors.goal}</p>}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Dates — side by side, items-start prevents cross-column misalignment */}
+        <div className="grid grid-cols-2 gap-4 items-start">
           <div className="space-y-2">
-            <Label>Start Date</Label>
+            <Label htmlFor="block-start">Start Date</Label>
             <Input
+              id="block-start"
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -381,11 +388,12 @@ function CreateBlockForm({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div className="space-y-2">
-            <Label className="flex gap-1">
+            <Label htmlFor="block-end">
               End Date
-              <span className="text-muted-foreground font-normal">(opt)</span>
+              <span className="ml-1 font-normal text-muted-foreground text-xs">(opt)</span>
             </Label>
             <Input
+              id="block-end"
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
@@ -394,21 +402,26 @@ function CreateBlockForm({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <label className="flex items-center gap-3 cursor-pointer select-none py-1">
+        {/* Active checkbox */}
+        <label className="flex items-center gap-3 cursor-pointer select-none rounded-lg border border-border px-4 py-3.5">
           <input
             type="checkbox"
             checked={makeActive}
             onChange={(e) => setMakeActive(e.target.checked)}
-            className="h-4 w-4 accent-primary rounded"
+            className="h-4 w-4 accent-primary rounded shrink-0"
           />
-          <span className="text-sm">Set as active block</span>
+          <div>
+            <p className="text-sm font-medium">Set as active block</p>
+            <p className="text-xs text-muted-foreground">Start logging workouts against this block</p>
+          </div>
         </label>
 
-        <div className="flex gap-3 pt-2">
-          <Button variant="outline" className="flex-1" onClick={onClose}>
+        {/* Actions */}
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1 h-11" onClick={onClose}>
             Cancel
           </Button>
-          <Button className="flex-1" onClick={handleSubmit}>
+          <Button className="flex-1 h-11" onClick={handleSubmit}>
             Create Block
           </Button>
         </div>
