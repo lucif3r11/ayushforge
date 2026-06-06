@@ -17,7 +17,9 @@ import {
 } from "recharts";
 import {
   format,
+  parse,
   parseISO,
+  addDays,
   startOfWeek,
   differenceInDays,
   isWithinInterval,
@@ -54,30 +56,34 @@ const C4 = "hsl(220 70% 50%)";  // --chart-1 dark  blue (dark mode chart-1)
 // ─── Data computations ────────────────────────────────────────────────────────
 
 interface WeekVolume {
-  week: string;      // "Jun 2"
+  week: string;      // "Jun 2–8"
   volume: number;    // kg × reps
 }
 
+function parseLocalDate(dateStr: string): Date {
+  return parse(dateStr, "yyyy-MM-dd", new Date());
+}
+
 function computeWeeklyVolume(logs: WorkoutLog[]): WeekVolume[] {
-  const map = new Map<string, number>();
+  const volumeMap = new Map<string, number>();
+  const labelMap = new Map<string, string>();
+
   logs.forEach((log) => {
-    const weekStart = startOfWeek(parseISO(log.date), { weekStartsOn: 1 });
-    const key = format(weekStart, "MMM d");
+    const weekStart = startOfWeek(parseLocalDate(log.date), { weekStartsOn: 1 });
+    const key = format(weekStart, "yyyy-MM-dd");
+    const label = `${format(weekStart, "MMM d")}–${format(addDays(weekStart, 6), "d")}`;
+    labelMap.set(key, label);
     const vol = log.exercises.reduce(
       (a, ex) => a + ex.sets.reduce((b, s) => b + s.weight * s.reps, 0),
       0
     );
-    map.set(key, (map.get(key) ?? 0) + vol);
+    volumeMap.set(key, (volumeMap.get(key) ?? 0) + vol);
   });
 
-  // Sort chronologically by original week-start date
-  const entries = logs
-    .map((l) => format(startOfWeek(parseISO(l.date), { weekStartsOn: 1 }), "MMM d"))
-    .filter((v, i, a) => a.indexOf(v) === i);
-
-  return entries.map((week) => ({
-    week,
-    volume: Math.round(map.get(week) ?? 0),
+  const keys = Array.from(volumeMap.keys()).sort();
+  return keys.map((key) => ({
+    week: labelMap.get(key)!,
+    volume: Math.round(volumeMap.get(key) ?? 0),
   }));
 }
 

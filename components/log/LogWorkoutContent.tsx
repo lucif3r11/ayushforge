@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import {
   Plus,
@@ -13,6 +14,7 @@ import {
   CheckCircle2,
   Layers,
   History,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
@@ -498,6 +500,7 @@ function NoBlockBanner() {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function LogWorkoutContent() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   // Store selectors
@@ -719,7 +722,16 @@ export default function LogWorkoutContent() {
 
         {/* ── Page title ─────────────────────────────────── */}
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Log Workout</h1>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => router.back()}
+              className="h-9 w-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors -ml-1"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="text-xl font-bold">Log Workout</h1>
+          </div>
           {exercises.length > 0 && (
             <Badge variant="secondary">
               {exercises.length} ex · {totalSetsLogged} sets
