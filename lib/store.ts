@@ -12,6 +12,7 @@ import type {
   DietSupps,
   BodyEntry,
   NutritionPlan,
+  MacroPlan,
   WorkoutImportBlock,
   ConflictStrategy,
 } from "./types";
@@ -59,6 +60,9 @@ interface AppStore extends AppData {
   // NutritionPlan action
   setNutritionPlan: (plan: NutritionPlan) => void;
 
+  // MacroPlan action
+  setMacroPlan: (plan: MacroPlan) => void;
+
   // Backup / restore
   importAllData: (data: Omit<AppData, "lastUpdated" | "lastExportedAt">) => void;
   setLastExportedAt: (ts: string) => void;
@@ -93,6 +97,10 @@ const initialState: AppData = {
     meals: DEFAULT_MEALS,
     suppNotes: "",
     supplements: [],
+    updatedAt: new Date().toISOString(),
+  },
+  macroPlan: {
+    dayPlans: [],
     updatedAt: new Date().toISOString(),
   },
   lastUpdated: new Date().toISOString(),
@@ -242,6 +250,10 @@ export const useAppStore = create<AppStore>()(
       setNutritionPlan: (plan) =>
         set({ nutritionPlan: { ...plan, updatedAt: now() }, lastUpdated: now() }),
 
+      // MacroPlan action
+      setMacroPlan: (plan) =>
+        set({ macroPlan: { ...plan, updatedAt: now() }, lastUpdated: now() }),
+
       // Backup / restore
       importAllData: (data) =>
         set({
@@ -252,6 +264,7 @@ export const useAppStore = create<AppStore>()(
           dietSupps:     data.dietSupps     ?? [],
           bodyEntries:   data.bodyEntries   ?? [],
           nutritionPlan: data.nutritionPlan ?? initialState.nutritionPlan,
+          macroPlan:     data.macroPlan     ?? initialState.macroPlan,
           lastUpdated:   now(),
         }),
       setLastExportedAt: (ts) => set({ lastExportedAt: ts }),

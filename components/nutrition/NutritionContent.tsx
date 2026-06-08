@@ -26,6 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import NutritionImporter from "@/components/nutrition/NutritionImporter";
+import MacroPlanContent from "@/components/nutrition/MacroPlanContent";
 import type { NutritionSupplement, DietMeal, DayTypeKey, NutritionPlan } from "@/lib/types";
 import { DAY_TYPE_KEYS } from "@/lib/types";
 
@@ -330,6 +331,11 @@ export default function NutritionContent() {
           <Badge variant="secondary" className="text-xs">{activeBlock.name}</Badge>
         </div>
       )}
+
+      {/* ══════════════════════════════════════════════
+          MACRO PLAN (structured calories & macros)
+      ══════════════════════════════════════════════ */}
+      <MacroPlanContent />
 
       {/* ══════════════════════════════════════════════
           DIET PLAN

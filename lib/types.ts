@@ -156,6 +156,39 @@ export interface NutritionPlan {
   updatedAt: string;
 }
 
+// ─── Structured macro plan ────────────────────────────────────────────────────
+// See Ironclad_Nutrition_Format.md for the import JSON shape.
+
+export interface MacroFoodItem {
+  id: string;
+  name: string;
+  quantity: string;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface MacroMeal {
+  id: string;
+  name: string;
+  items: MacroFoodItem[];
+}
+
+export type MacroDayType = "vegetarian" | "eggetarian";
+
+export interface MacroDayPlan {
+  id: string;
+  dayType: MacroDayType;
+  label?: string;
+  meals: MacroMeal[];
+}
+
+export interface MacroPlan {
+  dayPlans: MacroDayPlan[];
+  updatedAt: string;
+}
+
 export interface BodyEntry {
   id: string;
   date: string;           // "YYYY-MM-DD"
@@ -177,6 +210,7 @@ export interface AppData {
   dietSupps: DietSupps[];
   bodyEntries: BodyEntry[];
   nutritionPlan: NutritionPlan;
+  macroPlan: MacroPlan;
   lastUpdated: string;
   lastExportedAt?: string;
 }

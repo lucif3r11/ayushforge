@@ -136,6 +136,7 @@ export default function BackupRestore() {
   const dietSupps     = useAppStore((s) => s.dietSupps);
   const bodyEntries   = useAppStore((s) => s.bodyEntries);
   const nutritionPlan = useAppStore((s) => s.nutritionPlan);
+  const macroPlan     = useAppStore((s) => s.macroPlan);
   const lastExportedAt = useAppStore((s) => s.lastExportedAt);
   const importAllData  = useAppStore((s) => s.importAllData);
   const setLastExportedAt = useAppStore((s) => s.setLastExportedAt);
@@ -157,6 +158,7 @@ export default function BackupRestore() {
         dietSupps,
         bodyEntries,
         nutritionPlan,
+        macroPlan,
       },
     };
 
@@ -176,7 +178,7 @@ export default function BackupRestore() {
     toast.success("Backup downloaded!", {
       description: `ironclad-backup-${dateStr}.json`,
     });
-  }, [blocks, exercises, routines, workoutLogs, dietSupps, bodyEntries, nutritionPlan, setLastExportedAt]);
+  }, [blocks, exercises, routines, workoutLogs, dietSupps, bodyEntries, nutritionPlan, macroPlan, setLastExportedAt]);
 
   // ── Import ────────────────────────────────────────────────────────────────
 
