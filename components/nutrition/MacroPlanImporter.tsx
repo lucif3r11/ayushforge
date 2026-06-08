@@ -56,11 +56,13 @@ function normalizeDayType(val: unknown): MacroDayType | null {
   if (DAY_TYPE_ALIASES[key]) return DAY_TYPE_ALIASES[key];
 
   // Fall back to fuzzy matching against descriptive labels like
-  // "Veg Training Day" / "Egg Training Day" / "Refeed (Wednesday)" / "Sunday — Egg + Hyrox"
+  // "Veg Training Day" / "Egg Training Day" / "Refeed (Wednesday)" / "Sunday — Egg + Hyrox".
+  // Check the most distinctive keywords first — e.g. "Sunday — Egg + Hyrox" contains
+  // "egg" but must resolve to "sunday", not "eggetarian".
+  if (key.includes("sunday") || key.includes("hyrox")) return "sunday";
+  if (key.includes("refeed") || key.includes("wednesday") || key.includes("carb")) return "refeed";
   if (key.includes("egg")) return "eggetarian";
   if (key.includes("veg")) return "vegetarian";
-  if (key.includes("refeed") || key.includes("wednesday") || key.includes("carb")) return "refeed";
-  if (key.includes("sunday") || key.includes("hyrox")) return "sunday";
   return null;
 }
 
@@ -95,10 +97,23 @@ function parseFoodItem(raw: unknown): MacroFoodItem | null {
   };
 }
 
+/** Meals may be identified by name/label, or by mealType/mealNumber (e.g. { mealType: "Breakfast", mealNumber: 1 }). */
+function mealName(meal: Record<string, unknown>): string {
+  if (typeof meal.name === "string" && meal.name.trim()) return meal.name.trim();
+  if (typeof meal.label === "string" && meal.label.trim()) return meal.label.trim();
+  if (typeof meal.mealType === "string" && meal.mealType.trim()) return meal.mealType.trim();
+  if (typeof meal.type === "string" && meal.type.trim()) return meal.type.trim();
+  if (typeof meal.mealNumber === "number" || typeof meal.mealNumber === "string") {
+    const n = String(meal.mealNumber).trim();
+    if (n) return `Meal ${n}`;
+  }
+  return "";
+}
+
 function parseMeal(raw: unknown): MacroMeal | null {
   if (!raw || typeof raw !== "object") return null;
   const meal = raw as Record<string, unknown>;
-  const name = String(meal.name ?? meal.label ?? "").trim();
+  const name = mealName(meal);
   if (!name) return null;
   const itemsRaw = Array.isArray(meal.items)
     ? meal.items
@@ -108,7 +123,8 @@ function parseMeal(raw: unknown): MacroMeal | null {
   const items = itemsRaw
     .map(parseFoodItem)
     .filter((i): i is MacroFoodItem => i !== null);
-  return { id: uid(), name, items };
+  const notes = String(meal.notes ?? meal.note ?? "").trim();
+  return { id: uid(), name, items, notes: notes || undefined };
 }
 
 function parseDayPlan(raw: unknown): MacroDayPlan | null {
@@ -121,7 +137,15 @@ function parseDayPlan(raw: unknown): MacroDayPlan | null {
     .map(parseMeal)
     .filter((m): m is MacroMeal => m !== null);
   if (meals.length === 0) return null;
-  const label = typeof plan.label === "string" && plan.label.trim() ? plan.label.trim() : undefined;
+
+  // Prefer an explicit `label`; otherwise fall back to `name` if it's more
+  // descriptive than the bare day-type word (e.g. "Veg Training Day" vs "Vegetarian").
+  const explicitLabel = typeof plan.label === "string" ? plan.label.trim() : "";
+  const rawName = typeof plan.name === "string" ? plan.name.trim() : "";
+  const label =
+    explicitLabel ||
+    (rawName && rawName.toLowerCase() !== DAY_TYPE_LABELS[dayType].toLowerCase() ? rawName : undefined);
+
   return { id: uid(), dayType, label, meals };
 }
 
@@ -154,11 +178,17 @@ function parseMacroPlanFile(raw: unknown): MacroImportData | null {
 
   if (!dayPlansRaw) return null;
 
-  const dayPlans = dayPlansRaw
+  const parsedPlans = dayPlansRaw
     .map(parseDayPlan)
     .filter((p): p is MacroDayPlan => p !== null);
+  if (parsedPlans.length === 0) return null;
 
-  if (dayPlans.length === 0) return null;
+  // Guard against duplicate/colliding dayType entries (e.g. fuzzy-match
+  // collisions or genuine duplicates in the source file) — keep the last.
+  const byDayType = new Map<MacroDayType, MacroDayPlan>();
+  for (const plan of parsedPlans) byDayType.set(plan.dayType, plan);
+  const dayPlans = [...byDayType.values()];
+
   return { dayPlans };
 }
 

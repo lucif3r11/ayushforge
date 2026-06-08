@@ -201,12 +201,14 @@ const ROW_COLLAPSE_THRESHOLD = 6;
 
 function MealTable({
   meal,
+  onUpdateMealNotes,
   onUpdateItem,
   onUpdateItemNumber,
   onAddItem,
   onDeleteItem,
 }: {
   meal: MacroMeal;
+  onUpdateMealNotes: (value: string) => void;
   onUpdateItem: (itemId: string, field: "name" | "quantity" | "notes", value: string) => void;
   onUpdateItemNumber: (itemId: string, field: EditableNumField, value: string) => void;
   onAddItem: () => void;
@@ -223,9 +225,17 @@ function MealTable({
   return (
     <div className="rounded-xl border border-border overflow-hidden">
       <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-muted/40">
-        <span className="text-sm font-semibold shrink-0">{meal.name}</span>
+        <div className="min-w-0 flex-1">
+          <span className="text-sm font-semibold shrink-0">{meal.name}</span>
+          <input
+            value={meal.notes ?? ""}
+            onChange={(e) => onUpdateMealNotes(e.target.value)}
+            placeholder="Add note…"
+            className={cellInputClass("block text-[10px] italic text-muted-foreground/60 truncate")}
+          />
+        </div>
         {meal.items.length > 0 && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground shrink-0">
             {Math.round(totals.kcal)} kcal · {meal.items.length} item{meal.items.length !== 1 ? "s" : ""}
           </span>
         )}
@@ -364,6 +374,17 @@ export default function MacroPlanContent() {
   }, []);
 
   // ── Draft mutations ──────────────────────────────────────────────────────
+
+  const updateMealNotes = useCallback((mealId: string, value: string) => {
+    setDraft((d) => {
+      if (!d) return d;
+      return {
+        ...d,
+        meals: d.meals.map((m) => (m.id !== mealId ? m : { ...m, notes: value })),
+      };
+    });
+    setDirty(true);
+  }, []);
 
   const updateItem = useCallback(
     (mealId: string, itemId: string, field: "name" | "quantity" | "notes", value: string) => {
@@ -504,6 +525,7 @@ export default function MacroPlanContent() {
                 <MealTable
                   key={meal.id}
                   meal={meal}
+                  onUpdateMealNotes={(value) => updateMealNotes(meal.id, value)}
                   onUpdateItem={(itemId, field, value) => updateItem(meal.id, itemId, field, value)}
                   onUpdateItemNumber={(itemId, field, value) => updateItemNumber(meal.id, itemId, field, value)}
                   onAddItem={() => addItem(meal.id)}
