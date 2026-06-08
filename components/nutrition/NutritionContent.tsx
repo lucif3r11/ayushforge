@@ -333,7 +333,7 @@ export default function NutritionContent() {
       )}
 
       {/* ══════════════════════════════════════════════
-          MACRO PLAN (structured calories & macros)
+          STRUCTURED NUTRITION TABLES (calories & macros per meal)
       ══════════════════════════════════════════════ */}
       <MacroPlanContent />
 

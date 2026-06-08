@@ -175,7 +175,7 @@ export interface MacroMeal {
   items: MacroFoodItem[];
 }
 
-export type MacroDayType = "vegetarian" | "eggetarian";
+export type MacroDayType = "vegetarian" | "eggetarian" | "refeed" | "sunday";
 
 export interface MacroDayPlan {
   id: string;

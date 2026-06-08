@@ -14,18 +14,13 @@ import {
   Wheat,
   Droplet,
   UtensilsCrossed,
+  RefreshCw,
+  Sun,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import MacroPlanImporter from "@/components/nutrition/MacroPlanImporter";
@@ -63,6 +58,8 @@ function sumItems(items: MacroFoodItem[]): Totals {
 const DAY_TYPES: { key: MacroDayType; label: string; icon: typeof Salad }[] = [
   { key: "vegetarian", label: "Vegetarian", icon: Salad },
   { key: "eggetarian", label: "Eggetarian", icon: UtensilsCrossed },
+  { key: "refeed", label: "Refeed", icon: RefreshCw },
+  { key: "sunday", label: "Sunday", icon: Sun },
 ];
 
 // ─── Macro stat row (compact, color-coded) ───────────────────────────────────
@@ -91,11 +88,22 @@ function MacroStats({ totals, size = "sm" }: { totals: Totals; size?: "sm" | "md
   );
 }
 
-// ─── Food item card (always-editable, lives in horizontal scroller) ──────────
+// ─── Editable food row (lives inside a meal table) ───────────────────────────
 
 type EditableNumField = "kcal" | "protein" | "carbs" | "fat";
 
-function FoodItemCard({
+function cellInputClass(extra?: string) {
+  return cn(
+    "w-full min-w-0 bg-transparent outline-none text-xs leading-tight",
+    "placeholder:text-muted-foreground/40 rounded px-0.5 py-1 -mx-0.5",
+    "focus:bg-muted/60 transition-colors",
+    // Hide number input spin buttons — they inflate scrollWidth and clip digits in narrow cells
+    "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0",
+    extra
+  );
+}
+
+function FoodRow({
   item,
   onChange,
   onChangeNumber,
@@ -107,101 +115,85 @@ function FoodItemCard({
   onDelete: () => void;
 }) {
   return (
-    <div className="shrink-0 snap-start w-[156px] rounded-xl border border-border bg-card p-2.5 space-y-1.5 relative">
-      <button
-        onClick={onDelete}
-        className="absolute top-1.5 right-1.5 h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors z-10"
-        aria-label="Remove food item"
-      >
-        <Trash2 className="h-3 w-3" />
-      </button>
-
-      <Input
-        value={item.name}
-        onChange={(e) => onChange("name", e.target.value)}
-        placeholder="Food name"
-        className="h-8 text-xs font-medium pr-7"
-      />
-      <Input
-        value={item.quantity}
-        onChange={(e) => onChange("quantity", e.target.value)}
-        placeholder="Quantity"
-        className="h-7 text-xs text-muted-foreground"
-      />
-
-      <div className="flex items-center gap-1.5 pt-0.5">
-        <Flame className="h-3 w-3 text-orange-500 shrink-0" />
-        <Input
+    <tr className="border-t border-border/60">
+      <td className="py-1 pl-3 pr-1">
+        <input
+          value={item.name}
+          onChange={(e) => onChange("name", e.target.value)}
+          placeholder="Food name"
+          className={cellInputClass("font-medium text-foreground")}
+        />
+      </td>
+      <td className="py-1 pr-1">
+        <input
+          value={item.quantity}
+          onChange={(e) => onChange("quantity", e.target.value)}
+          placeholder="Qty"
+          className={cellInputClass("text-muted-foreground")}
+        />
+      </td>
+      <td className="py-1 pr-1">
+        <input
           type="number"
           inputMode="numeric"
           value={item.kcal || ""}
           onChange={(e) => onChangeNumber("kcal", e.target.value)}
-          placeholder="kcal"
-          className="h-7 text-xs text-center px-1"
+          placeholder="0"
           min="0"
+          className={cellInputClass("text-right font-medium")}
         />
-      </div>
-
-      <div className="grid grid-cols-3 gap-1">
-        <div className="space-y-0.5">
-          <span className="flex items-center justify-center gap-0.5 text-[9px] font-semibold text-blue-600 dark:text-blue-400">
-            <Drumstick className="h-2.5 w-2.5" /> P
-          </span>
-          <Input
-            type="number"
-            inputMode="numeric"
-            value={item.protein || ""}
-            onChange={(e) => onChangeNumber("protein", e.target.value)}
-            className="h-7 text-xs text-center px-0.5"
-            min="0"
-          />
-        </div>
-        <div className="space-y-0.5">
-          <span className="flex items-center justify-center gap-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
-            <Wheat className="h-2.5 w-2.5" /> C
-          </span>
-          <Input
-            type="number"
-            inputMode="numeric"
-            value={item.carbs || ""}
-            onChange={(e) => onChangeNumber("carbs", e.target.value)}
-            className="h-7 text-xs text-center px-0.5"
-            min="0"
-          />
-        </div>
-        <div className="space-y-0.5">
-          <span className="flex items-center justify-center gap-0.5 text-[9px] font-semibold text-rose-600 dark:text-rose-400">
-            <Droplet className="h-2.5 w-2.5" /> F
-          </span>
-          <Input
-            type="number"
-            inputMode="numeric"
-            value={item.fat || ""}
-            onChange={(e) => onChangeNumber("fat", e.target.value)}
-            className="h-7 text-xs text-center px-0.5"
-            min="0"
-          />
-        </div>
-      </div>
-    </div>
+      </td>
+      <td className="py-1 pr-1">
+        <input
+          type="number"
+          inputMode="numeric"
+          value={item.protein || ""}
+          onChange={(e) => onChangeNumber("protein", e.target.value)}
+          placeholder="0"
+          min="0"
+          className={cellInputClass("text-right text-blue-600 dark:text-blue-400")}
+        />
+      </td>
+      <td className="py-1 pr-1">
+        <input
+          type="number"
+          inputMode="numeric"
+          value={item.carbs || ""}
+          onChange={(e) => onChangeNumber("carbs", e.target.value)}
+          placeholder="0"
+          min="0"
+          className={cellInputClass("text-right text-amber-600 dark:text-amber-400")}
+        />
+      </td>
+      <td className="py-1 pr-1">
+        <input
+          type="number"
+          inputMode="numeric"
+          value={item.fat || ""}
+          onChange={(e) => onChangeNumber("fat", e.target.value)}
+          placeholder="0"
+          min="0"
+          className={cellInputClass("text-right text-rose-600 dark:text-rose-400")}
+        />
+      </td>
+      <td className="py-1 pr-1">
+        <button
+          onClick={onDelete}
+          className="h-5 w-5 flex items-center justify-center rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors"
+          aria-label="Remove food item"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      </td>
+    </tr>
   );
 }
 
-function AddFoodItemCard({ onAdd }: { onAdd: () => void }) {
-  return (
-    <button
-      onClick={onAdd}
-      className="shrink-0 snap-start w-[72px] rounded-xl border border-dashed border-border flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
-    >
-      <Plus className="h-4 w-4" />
-      <span className="text-[10px] font-medium leading-tight text-center px-1">Add food</span>
-    </button>
-  );
-}
+// ─── Meal table (clean Food | Quantity | Kcal | P | C | F layout) ────────────
 
-// ─── Meal block ───────────────────────────────────────────────────────────────
+const ROW_COLLAPSE_THRESHOLD = 6;
 
-function MealBlock({
+function MealTable({
   meal,
   onUpdateItem,
   onUpdateItemNumber,
@@ -214,27 +206,85 @@ function MealBlock({
   onAddItem: () => void;
   onDeleteItem: (itemId: string) => void;
 }) {
+  const isLong = meal.items.length > ROW_COLLAPSE_THRESHOLD;
+  // Long meals start collapsed (accordion) to keep the page from getting too tall
+  const [expanded, setExpanded] = useState(!isLong);
   const totals = useMemo(() => sumItems(meal.items), [meal.items]);
+
+  const visibleItems = isLong && !expanded ? meal.items.slice(0, ROW_COLLAPSE_THRESHOLD) : meal.items;
+  const hiddenCount = meal.items.length - visibleItems.length;
 
   return (
     <div className="rounded-xl border border-border overflow-hidden">
       <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-muted/40">
         <span className="text-sm font-semibold shrink-0">{meal.name}</span>
-        {meal.items.length > 0 && <MacroStats totals={totals} />}
+        {meal.items.length > 0 && (
+          <span className="text-xs text-muted-foreground">
+            {Math.round(totals.kcal)} kcal · {meal.items.length} item{meal.items.length !== 1 ? "s" : ""}
+          </span>
+        )}
       </div>
-      <div className="p-2.5">
-        <div className="flex gap-2 overflow-x-auto snap-x snap-proximity pb-1 -mx-1 px-1">
-          {meal.items.map((item) => (
-            <FoodItemCard
-              key={item.id}
-              item={item}
-              onChange={(field, value) => onUpdateItem(item.id, field, value)}
-              onChangeNumber={(field, value) => onUpdateItemNumber(item.id, field, value)}
-              onDelete={() => onDeleteItem(item.id)}
-            />
-          ))}
-          <AddFoodItemCard onAdd={onAddItem} />
+
+      {meal.items.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse table-fixed">
+            <thead>
+              <tr className="text-[9px] uppercase tracking-wide text-muted-foreground/70">
+                {/* Food has no fixed width — it absorbs whatever space is left */}
+                <th className="text-left font-semibold pl-3 pr-1 py-1.5">Food</th>
+                <th className="w-[54px] text-left font-semibold pr-1 py-1.5">Qty</th>
+                <th className="w-9 text-right font-semibold pr-1 py-1.5">Kcal</th>
+                <th className="w-7 text-right font-semibold pr-1 py-1.5">P</th>
+                <th className="w-7 text-right font-semibold pr-1 py-1.5">C</th>
+                <th className="w-7 text-right font-semibold pr-1.5 py-1.5">F</th>
+                <th className="w-6" />
+              </tr>
+            </thead>
+            <tbody>
+              {visibleItems.map((item) => (
+                <FoodRow
+                  key={item.id}
+                  item={item}
+                  onChange={(field, value) => onUpdateItem(item.id, field, value)}
+                  onChangeNumber={(field, value) => onUpdateItemNumber(item.id, field, value)}
+                  onDelete={() => onDeleteItem(item.id)}
+                />
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-border font-semibold">
+                <td className="pl-3 pr-1.5 py-1.5 text-foreground" colSpan={2}>
+                  Meal total
+                </td>
+                <td className="text-right pr-1.5 py-1.5 text-foreground">{Math.round(totals.kcal)}</td>
+                <td className="text-right pr-1 py-1.5 text-blue-600 dark:text-blue-400">{Math.round(totals.protein)}</td>
+                <td className="text-right pr-1 py-1.5 text-amber-600 dark:text-amber-400">{Math.round(totals.carbs)}</td>
+                <td className="text-right pr-2 py-1.5 text-rose-600 dark:text-rose-400">{Math.round(totals.fat)}</td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
         </div>
+      )}
+
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border">
+        {isLong ? (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            {expanded ? "Show less" : `Show ${hiddenCount} more item${hiddenCount !== 1 ? "s" : ""}`}
+          </button>
+        ) : (
+          <span />
+        )}
+        <button
+          onClick={onAddItem}
+          className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Plus className="h-3 w-3" />
+          Add food
+        </button>
       </div>
     </div>
   );
@@ -255,7 +305,7 @@ function SaveBar({ dirty, onSave }: { dirty: boolean; onSave: () => void }) {
       )}
       <Button size="sm" onClick={onSave} disabled={!dirty} className="gap-1.5">
         <Save className="h-3.5 w-3.5" />
-        Save Macro Plan
+        Save Nutrition Plan
       </Button>
     </div>
   );
@@ -268,7 +318,7 @@ function EmptyDayPlan({ label }: { label: string }) {
     <div className="rounded-xl border border-dashed border-border py-8 flex flex-col items-center gap-2 text-center px-4">
       <Salad className="h-7 w-7 text-muted-foreground/40" strokeWidth={1.25} />
       <p className="text-xs text-muted-foreground">
-        No {label.toLowerCase()} macro plan yet. Import one below to get started.
+        No {label.toLowerCase()} nutrition plan yet. Import one below to get started.
       </p>
     </div>
   );
@@ -283,7 +333,6 @@ export default function MacroPlanContent() {
   const planUpdatedAt = useAppStore((s) => s.macroPlan.updatedAt);
   const setMacroPlan = useAppStore((s) => s.setMacroPlan);
 
-  const [expanded, setExpanded] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<MacroDayType>("vegetarian");
   const [draft, setDraft] = useState<MacroDayPlan | null>(null);
@@ -292,7 +341,7 @@ export default function MacroPlanContent() {
   // Restore last-used day type
   useEffect(() => {
     const saved = localStorage.getItem(LS_DAY_TYPE_KEY);
-    if (saved === "vegetarian" || saved === "eggetarian") setSelectedType(saved);
+    if (DAY_TYPES.some((d) => d.key === saved)) setSelectedType(saved as MacroDayType);
   }, []);
 
   // Re-sync draft from store whenever the plan or selected type changes
@@ -384,7 +433,7 @@ export default function MacroPlanContent() {
     const updated: MacroPlan = { ...macroPlan, dayPlans: [...others, draft] };
     setMacroPlan(updated);
     setDirty(false);
-    toast.success(`${dayTypeMeta(selectedType).label} macro plan saved!`);
+    toast.success(`${dayTypeMeta(selectedType).label} nutrition plan saved!`);
   }, [draft, macroPlan, setMacroPlan, selectedType]);
 
   function dayTypeMeta(key: MacroDayType) {
@@ -397,39 +446,14 @@ export default function MacroPlanContent() {
   );
 
   const activeMeta = dayTypeMeta(selectedType);
-  const totalItems = draft ? draft.meals.reduce((a, m) => a + m.items.length, 0) : 0;
 
   return (
     <Card>
-      <CardHeader className={expanded ? "pb-3" : "pb-4"}>
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="rounded-lg bg-orange-500/10 p-1.5 shrink-0">
-              <Flame className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-            </div>
-            <div className="min-w-0">
-              <CardTitle className="text-base">Macro Plan</CardTitle>
-              <CardDescription className="text-xs">
-                {draft
-                  ? `${draft.meals.length} meal${draft.meals.length !== 1 ? "s" : ""} · ${totalItems} items · ${activeMeta.label}`
-                  : "Structured calories & macros per meal"}
-              </CardDescription>
-            </div>
-          </div>
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors shrink-0"
-            aria-label={expanded ? "Collapse macro plan" : "Expand macro plan"}
-          >
-            <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} />
-          </button>
-        </div>
-      </CardHeader>
-
-      {expanded && (
-        <CardContent className="space-y-4">
-          {/* Day-type selector */}
-          <div className="flex gap-1.5">
+      <CardContent className="space-y-4 pt-5">
+        {/* Day-type selector */}
+        <div>
+          <p className="text-xs text-muted-foreground mb-2">Select a day type</p>
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1">
             {DAY_TYPES.map((dt) => {
               const Icon = dt.icon;
               const hasPlan = macroPlan.dayPlans.some((p) => p.dayType === dt.key);
@@ -438,13 +462,13 @@ export default function MacroPlanContent() {
                   key={dt.key}
                   onClick={() => handleTypeChange(dt.key)}
                   className={cn(
-                    "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all",
+                    "flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all",
                     selectedType === dt.key
                       ? "border-primary bg-primary text-primary-foreground shadow-sm"
                       : "border-border text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-3.5 w-3.5" />
                   {dt.label}
                   {!hasPlan && (
                     <span className={cn(
@@ -456,71 +480,71 @@ export default function MacroPlanContent() {
               );
             })}
           </div>
+        </div>
 
-          {draft && dayTotals ? (
+        {draft && dayTotals ? (
+          <>
+            {/* Day totals banner */}
+            <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 px-3.5 py-3 space-y-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Daily total{draft.label ? ` · ${draft.label}` : ` · ${activeMeta.label}`}
+              </p>
+              <MacroStats totals={dayTotals} size="md" />
+            </div>
+
+            {/* Meals */}
+            <div className="space-y-3">
+              {draft.meals.map((meal) => (
+                <MealTable
+                  key={meal.id}
+                  meal={meal}
+                  onUpdateItem={(itemId, field, value) => updateItem(meal.id, itemId, field, value)}
+                  onUpdateItemNumber={(itemId, field, value) => updateItemNumber(meal.id, itemId, field, value)}
+                  onAddItem={() => addItem(meal.id)}
+                  onDeleteItem={(itemId) => deleteItem(meal.id, itemId)}
+                />
+              ))}
+            </div>
+
+            <Separator />
+            <SaveBar dirty={dirty} onSave={handleSave} />
+          </>
+        ) : (
+          <EmptyDayPlan label={activeMeta.label} />
+        )}
+
+        {/* ── Import ────────────────────────────────────── */}
+        <div className="rounded-xl border border-border overflow-hidden">
+          <button
+            onClick={() => setImportOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-3.5 py-3 text-left"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="rounded-lg bg-muted p-1.5 shrink-0">
+                <FileJson className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Import Nutrition Plan</p>
+                <p className="text-xs text-muted-foreground">Drag & drop a structured nutrition JSON</p>
+              </div>
+            </div>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground shrink-0 transition-transform",
+                importOpen && "rotate-180"
+              )}
+            />
+          </button>
+          {importOpen && (
             <>
-              {/* Day totals banner */}
-              <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 px-3.5 py-3 space-y-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Daily total{draft.label ? ` · ${draft.label}` : ""}
-                </p>
-                <MacroStats totals={dayTotals} size="md" />
-              </div>
-
-              {/* Meals */}
-              <div className="space-y-3">
-                {draft.meals.map((meal) => (
-                  <MealBlock
-                    key={meal.id}
-                    meal={meal}
-                    onUpdateItem={(itemId, field, value) => updateItem(meal.id, itemId, field, value)}
-                    onUpdateItemNumber={(itemId, field, value) => updateItemNumber(meal.id, itemId, field, value)}
-                    onAddItem={() => addItem(meal.id)}
-                    onDeleteItem={(itemId) => deleteItem(meal.id, itemId)}
-                  />
-                ))}
-              </div>
-
               <Separator />
-              <SaveBar dirty={dirty} onSave={handleSave} />
-            </>
-          ) : (
-            <EmptyDayPlan label={activeMeta.label} />
-          )}
-
-          {/* ── Import ────────────────────────────────────── */}
-          <div className="rounded-xl border border-border overflow-hidden">
-            <button
-              onClick={() => setImportOpen((v) => !v)}
-              className="w-full flex items-center justify-between px-3.5 py-3 text-left"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="rounded-lg bg-muted p-1.5 shrink-0">
-                  <FileJson className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Import Macro Plan</p>
-                  <p className="text-xs text-muted-foreground">Drag & drop a structured macro JSON</p>
-                </div>
+              <div className="p-3.5">
+                <MacroPlanImporter />
               </div>
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 text-muted-foreground shrink-0 transition-transform",
-                  importOpen && "rotate-180"
-                )}
-              />
-            </button>
-            {importOpen && (
-              <>
-                <Separator />
-                <div className="p-3.5">
-                  <MacroPlanImporter />
-                </div>
-              </>
-            )}
-          </div>
-        </CardContent>
-      )}
+            </>
+          )}
+        </div>
+      </CardContent>
     </Card>
   );
 }

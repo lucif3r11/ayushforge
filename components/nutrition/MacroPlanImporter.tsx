@@ -43,16 +43,36 @@ const DAY_TYPE_ALIASES: Record<string, MacroDayType> = {
   eggtraining: "eggetarian",
   nonveg: "eggetarian",
   "non-veg": "eggetarian",
+  refeed: "refeed",
+  carbrefeed: "refeed",
+  wednesday: "refeed",
+  sunday: "sunday",
+  egghyrox: "sunday",
 };
 
 function normalizeDayType(val: unknown): MacroDayType | null {
   if (typeof val !== "string") return null;
-  const key = val.toLowerCase().trim().replace(/[\s_]/g, "");
-  return DAY_TYPE_ALIASES[key] ?? null;
+  const key = val.toLowerCase().trim().replace(/[\s_-]/g, "");
+  if (DAY_TYPE_ALIASES[key]) return DAY_TYPE_ALIASES[key];
+
+  // Fall back to fuzzy matching against descriptive labels like
+  // "Veg Training Day" / "Egg Training Day" / "Refeed (Wednesday)" / "Sunday — Egg + Hyrox"
+  if (key.includes("egg")) return "eggetarian";
+  if (key.includes("veg")) return "vegetarian";
+  if (key.includes("refeed") || key.includes("wednesday") || key.includes("carb")) return "refeed";
+  if (key.includes("sunday") || key.includes("hyrox")) return "sunday";
+  return null;
 }
 
+const DAY_TYPE_LABELS: Record<MacroDayType, string> = {
+  vegetarian: "Vegetarian",
+  eggetarian: "Eggetarian",
+  refeed: "Refeed",
+  sunday: "Sunday",
+};
+
 function dayTypeLabel(t: MacroDayType): string {
-  return t === "vegetarian" ? "Vegetarian" : "Eggetarian";
+  return DAY_TYPE_LABELS[t];
 }
 
 // ─── Parsing ──────────────────────────────────────────────────────────────────
@@ -92,7 +112,7 @@ function parseMeal(raw: unknown): MacroMeal | null {
 function parseDayPlan(raw: unknown): MacroDayPlan | null {
   if (!raw || typeof raw !== "object") return null;
   const plan = raw as Record<string, unknown>;
-  const dayType = normalizeDayType(plan.dayType ?? plan.type ?? plan.day);
+  const dayType = normalizeDayType(plan.dayType ?? plan.type ?? plan.name ?? plan.day);
   if (!dayType) return null;
   const mealsRaw = Array.isArray(plan.meals) ? plan.meals : [];
   const meals = mealsRaw
@@ -111,11 +131,14 @@ function parseMacroPlanFile(raw: unknown): MacroImportData | null {
   if (!raw || typeof raw !== "object") return null;
   const obj = raw as Record<string, unknown>;
 
-  // Accept { type: "ironclad-macro-plan", dayPlans: [...] } or relaxed { dayPlans: [...] }
+  // Accept { type: "nutrition_only", dayTypes: [...] } (preferred format),
+  // { type: "ironclad-macro-plan", dayPlans: [...] } / relaxed { dayPlans: [...] },
   // or a full Ironclad backup with data.macroPlan
   let dayPlansRaw: unknown[] | null = null;
 
-  if (Array.isArray(obj.dayPlans)) {
+  if (Array.isArray(obj.dayTypes)) {
+    dayPlansRaw = obj.dayTypes;
+  } else if (Array.isArray(obj.dayPlans)) {
     dayPlansRaw = obj.dayPlans;
   } else if (obj.appName === "Ironclad" && obj.data && typeof obj.data === "object") {
     const d = (obj.data as Record<string, unknown>).macroPlan;
@@ -242,9 +265,9 @@ export default function MacroPlanImporter() {
         const data = parseMacroPlanFile(raw);
 
         if (!data) {
-          toast.error("No macro plan recognised in this file.", {
+          toast.error("No nutrition plan recognised in this file.", {
             description:
-              'Expected { type: "ironclad-macro-plan", dayPlans: [...] } — see Ironclad_Nutrition_Format.md.',
+              'Expected { type: "nutrition_only", dayTypes: [...] } — see Ironclad_Nutrition_Format.md.',
           });
           return;
         }
@@ -305,7 +328,7 @@ export default function MacroPlanImporter() {
         `${totalMeals} meal${totalMeals !== 1 ? "s" : ""} · ${totalItems} food item${totalItems !== 1 ? "s" : ""}`
       );
       setStep("success");
-      toast.success("Macro plan imported!");
+      toast.success("Nutrition plan imported!");
     } catch {
       toast.error("Import failed.");
     } finally {
@@ -327,7 +350,7 @@ export default function MacroPlanImporter() {
           <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-green-700 dark:text-green-400">
-              Macro plan imported!
+              Nutrition plan imported!
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">{successMsg}</p>
           </div>
@@ -416,7 +439,7 @@ export default function MacroPlanImporter() {
         </div>
         <div className="text-center pointer-events-none">
           <p className="text-sm font-medium">
-            {dragOver ? "Drop to import" : "Drop macro plan here"}
+            {dragOver ? "Drop to import" : "Drop nutrition plan here"}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
             or click to select a .json file
@@ -434,7 +457,7 @@ export default function MacroPlanImporter() {
 
       <p className="text-xs text-muted-foreground text-center">
         Accepts{" "}
-        <code className="bg-muted px-1 py-0.5 rounded text-xs">ironclad-macro-plan</code>{" "}
+        <code className="bg-muted px-1 py-0.5 rounded text-xs">nutrition_only</code>{" "}
         JSON — see <span className="font-medium">Ironclad_Nutrition_Format.md</span> for the spec.
       </p>
     </div>
