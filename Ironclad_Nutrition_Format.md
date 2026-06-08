@@ -25,7 +25,8 @@ diet plan format.
               "kcal": 300,
               "protein": 10,
               "carbs": 54,
-              "fat": 6
+              "fat": 6,
+              "notes": "soaked overnight"
             },
             {
               "name": "Whey Protein",
@@ -87,14 +88,15 @@ already exists replaces it; other day types are left untouched.
 | `foods` | array  | yes      | Food items that make up the meal (can be empty)       |
 
 ### Food item
-| Field      | Type           | Required | Notes                                              |
-|------------|----------------|----------|----------------------------------------------------|
-| `name`     | string         | yes      | Food/ingredient name                               |
-| `quantity` | string         | yes      | Free-form portion text, e.g. "100 g", "1 cup"      |
-| `kcal`     | number         | yes      | Calories for that quantity                         |
-| `protein`  | number (grams) | yes      | Protein in grams                                   |
-| `carbs`    | number (grams) | yes      | Carbohydrates in grams                             |
-| `fat`      | number (grams) | yes      | Fat in grams                                       |
+| Field      | Type           | Required | Notes                                                       |
+|------------|----------------|----------|-------------------------------------------------------------|
+| `name`     | string         | yes      | Food/ingredient name (alias: `food`)                        |
+| `quantity` | string         | yes      | Free-form portion text, e.g. "100 g", "1 cup"               |
+| `kcal`     | number         | yes      | Calories for that quantity                                  |
+| `protein`  | number (grams) | yes      | Protein in grams                                            |
+| `carbs`    | number (grams) | yes      | Carbohydrates in grams                                      |
+| `fat`      | number (grams) | yes      | Fat in grams                                                |
+| `notes`    | string         | no       | Optional short note, e.g. "soaked overnight", "or substitute with tofu" |
 
 All numeric fields should reflect the macros for the **stated quantity**, not per
 100 g — Ironclad sums them as-is to produce per-meal and per-day totals, displayed in

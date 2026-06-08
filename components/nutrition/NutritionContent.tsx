@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  Utensils,
   Pill,
   Plus,
   Trash2,
@@ -24,29 +23,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import NutritionImporter from "@/components/nutrition/NutritionImporter";
 import MacroPlanContent from "@/components/nutrition/MacroPlanContent";
-import type { NutritionSupplement, DietMeal, DayTypeKey, NutritionPlan } from "@/lib/types";
-import { DAY_TYPE_KEYS } from "@/lib/types";
-
-// ─── Day-type config ──────────────────────────────────────────────────────────
-
-const DAY_TYPES: { key: DayTypeKey; label: string; days: string }[] = [
-  { key: "vegTraining", label: "Veg Training",  days: "Mon · Tue · Sat" },
-  { key: "eggTraining", label: "Egg Training",  days: "Thu · Fri" },
-  { key: "wednesday",   label: "Refeed",        days: "Wednesday" },
-  { key: "sunday",      label: "Sunday",        days: "Egg + Hyrox" },
-];
-
-// Canonical slot order (must match lib/store.ts DEFAULT_MEALS)
-const MEAL_SLOTS = [
-  "Breakfast",
-  "Pre-Workout",
-  "Post-Workout",
-  "Snacks / Standalones",
-  "Dinner",
-];
+import type { NutritionSupplement } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -56,73 +35,6 @@ function uid() {
 
 function emptySupp(): NutritionSupplement {
   return { id: uid(), name: "", dose: "", timing: "", notes: "" };
-}
-
-/** Build a full set of meal slots for a given day-type plan, filling gaps from fallback. */
-function buildDisplayMeals(
-  dayPlan: DietMeal[] | undefined,
-  fallback: DietMeal[]
-): DietMeal[] {
-  return MEAL_SLOTS.map((label) => ({
-    label,
-    content:
-      dayPlan?.find((m) => m.label === label)?.content ??
-      fallback.find((m) => m.label === label)?.content ??
-      "",
-  }));
-}
-
-// ─── Auto-height meal row ─────────────────────────────────────────────────────
-
-function MealRow({
-  meal,
-  index,
-  onChange,
-}: {
-  meal: DietMeal;
-  index: number;
-  onChange: (content: string) => void;
-}) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
-  }, [meal.content]);
-
-  const handleInput = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const el = e.currentTarget;
-      el.style.height = "auto";
-      el.style.height = `${el.scrollHeight}px`;
-      onChange(e.target.value);
-    },
-    [onChange]
-  );
-
-  const filled = meal.content.trim().length > 0;
-
-  return (
-    <div className="rounded-lg border border-border overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
-        <span className="text-xs font-semibold text-foreground">{meal.label}</span>
-        {filled && <div className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />}
-      </div>
-      <div className="px-3 py-2">
-        <textarea
-          ref={ref}
-          value={meal.content}
-          onChange={handleInput}
-          placeholder={meal.label}
-          rows={1}
-          className="w-full text-sm resize-none overflow-hidden bg-transparent outline-none placeholder:text-muted-foreground leading-relaxed"
-          style={{ minHeight: "32px" }}
-        />
-      </div>
-    </div>
-  );
 }
 
 // ─── Supplement row ───────────────────────────────────────────────────────────
@@ -214,74 +126,26 @@ function NutritionSkeleton() {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-const LS_DAY_TYPE_KEY = "ironclad-selected-day-type";
-
 export default function NutritionContent() {
   const [mounted, setMounted] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [dietExpanded, setDietExpanded] = useState(true);
   const [suppsExpanded, setSuppsExpanded] = useState(true);
-
-  // Persist last-used day type across page loads
-  const [selectedDayType, setSelectedDayType] = useState<DayTypeKey>("vegTraining");
 
   const nutritionPlan = useAppStore((s) => s.nutritionPlan);
   const planUpdatedAt = useAppStore((s) => s.nutritionPlan.updatedAt);
   const setNutritionPlan = useAppStore((s) => s.setNutritionPlan);
   const activeBlock = useAppStore((s) => s.blocks.find((b) => b.isActive));
 
-  const [meals, setMeals] = useState<DietMeal[]>([]);
-  const [dietDirty, setDietDirty] = useState(false);
-
   const [supplements, setSupplements] = useState<NutritionSupplement[]>([]);
   const [suppDirty, setSuppDirty] = useState(false);
 
-  // Restore last-used day type on mount
-  useEffect(() => {
-    const saved = localStorage.getItem(LS_DAY_TYPE_KEY) as DayTypeKey | null;
-    if (saved && (DAY_TYPE_KEYS as readonly string[]).includes(saved)) {
-      setSelectedDayType(saved);
-    }
-  }, []);
-
-  // Hydrate / re-sync whenever the store plan or selected day type changes
+  // Hydrate / re-sync whenever the store plan changes
   useEffect(() => {
     const plan = useAppStore.getState().nutritionPlan;
-    const dayPlan = plan.dayTypePlans?.[selectedDayType];
-    setMeals(buildDisplayMeals(dayPlan, plan.meals));
-    setDietDirty(false);
     setSupplements(plan.supplements.map((s) => ({ ...s })));
     setSuppDirty(false);
     if (!mounted) setMounted(true);
-  }, [planUpdatedAt, selectedDayType]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Day-type selection ────────────────────────────────────────────────────
-
-  const handleDayTypeChange = useCallback((key: DayTypeKey) => {
-    setSelectedDayType(key);
-    localStorage.setItem(LS_DAY_TYPE_KEY, key);
-  }, []);
-
-  // ── Diet handlers ─────────────────────────────────────────────────────────
-
-  const handleMealChange = useCallback((index: number, content: string) => {
-    setMeals((prev) => prev.map((m, i) => (i === index ? { ...m, content } : m)));
-    setDietDirty(true);
-  }, []);
-
-  const saveDiet = useCallback(() => {
-    const dayLabel = DAY_TYPES.find((d) => d.key === selectedDayType)?.label ?? "Diet";
-    const updated: NutritionPlan = {
-      ...nutritionPlan,
-      dayTypePlans: {
-        ...nutritionPlan.dayTypePlans,
-        [selectedDayType]: meals,
-      },
-    };
-    setNutritionPlan(updated);
-    setDietDirty(false);
-    toast.success(`${dayLabel} plan saved!`);
-  }, [nutritionPlan, setNutritionPlan, meals, selectedDayType]);
+  }, [planUpdatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Supplement handlers ───────────────────────────────────────────────────
 
@@ -311,9 +175,7 @@ export default function NutritionContent() {
 
   if (!mounted) return <NutritionSkeleton />;
 
-  const filledMeals = meals.filter((m) => m.content.trim().length > 0).length;
   const namedSupps = supplements.filter((s) => s.name.trim().length > 0).length;
-  const activeDayType = DAY_TYPES.find((d) => d.key === selectedDayType)!;
 
   return (
     <div className="p-4 pb-8 space-y-5 max-w-lg mx-auto">
@@ -336,78 +198,6 @@ export default function NutritionContent() {
           STRUCTURED NUTRITION TABLES (calories & macros per meal)
       ══════════════════════════════════════════════ */}
       <MacroPlanContent />
-
-      {/* ══════════════════════════════════════════════
-          DIET PLAN
-      ══════════════════════════════════════════════ */}
-      <Card>
-        <CardHeader className={dietExpanded ? "pb-3" : "pb-4"}>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="rounded-lg bg-green-500/10 p-1.5 shrink-0">
-                <Utensils className="h-4 w-4 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="min-w-0">
-                <CardTitle className="text-base">Diet Plan</CardTitle>
-                <CardDescription className="text-xs">
-                  {filledMeals > 0
-                    ? `${filledMeals} meal${filledMeals !== 1 ? "s" : ""} · ${activeDayType.label}`
-                    : "Select a day type below"}
-                </CardDescription>
-              </div>
-            </div>
-            <button
-              onClick={() => setDietExpanded((v) => !v)}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors shrink-0"
-              aria-label={dietExpanded ? "Collapse diet plan" : "Expand diet plan"}
-            >
-              <ChevronDown
-                className={`h-4 w-4 transition-transform ${dietExpanded ? "rotate-180" : ""}`}
-              />
-            </button>
-          </div>
-        </CardHeader>
-
-        {dietExpanded && (
-          <CardContent className="space-y-4">
-            {/* ── Day-type selector ──────────────────── */}
-            <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1">
-              {DAY_TYPES.map((dt) => (
-                <button
-                  key={dt.key}
-                  onClick={() => handleDayTypeChange(dt.key)}
-                  className={cn(
-                    "flex-shrink-0 text-left px-3 py-2 rounded-lg border transition-all",
-                    selectedDayType === dt.key
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                      : "border-border text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
-                  )}
-                >
-                  <p className="text-xs font-bold leading-tight">{dt.label}</p>
-                  <p className={cn("text-[10px] leading-tight mt-0.5", selectedDayType === dt.key ? "opacity-70" : "opacity-55")}>
-                    {dt.days}
-                  </p>
-                </button>
-              ))}
-            </div>
-
-            {/* ── Meal slots ─────────────────────────── */}
-            <div className="space-y-2">
-              {meals.map((meal, i) => (
-                <MealRow
-                  key={meal.label}
-                  meal={meal}
-                  index={i}
-                  onChange={(content) => handleMealChange(i, content)}
-                />
-              ))}
-            </div>
-
-            <Separator />
-            <SaveBar dirty={dietDirty} onSave={saveDiet} label={`Save ${activeDayType.label}`} />
-          </CardContent>
-        )}
-      </Card>
 
       {/* ══════════════════════════════════════════════
           SUPPLEMENTS PLAN

@@ -110,7 +110,7 @@ function FoodRow({
   onDelete,
 }: {
   item: MacroFoodItem;
-  onChange: (field: "name" | "quantity", value: string) => void;
+  onChange: (field: "name" | "quantity" | "notes", value: string) => void;
   onChangeNumber: (field: EditableNumField, value: string) => void;
   onDelete: () => void;
 }) {
@@ -122,6 +122,12 @@ function FoodRow({
           onChange={(e) => onChange("name", e.target.value)}
           placeholder="Food name"
           className={cellInputClass("font-medium text-foreground")}
+        />
+        <input
+          value={item.notes ?? ""}
+          onChange={(e) => onChange("notes", e.target.value)}
+          placeholder="Add note…"
+          className={cellInputClass("text-[10px] italic text-muted-foreground/60 -mt-0.5 truncate")}
         />
       </td>
       <td className="py-1 pr-1">
@@ -201,7 +207,7 @@ function MealTable({
   onDeleteItem,
 }: {
   meal: MacroMeal;
-  onUpdateItem: (itemId: string, field: "name" | "quantity", value: string) => void;
+  onUpdateItem: (itemId: string, field: "name" | "quantity" | "notes", value: string) => void;
   onUpdateItemNumber: (itemId: string, field: EditableNumField, value: string) => void;
   onAddItem: () => void;
   onDeleteItem: (itemId: string) => void;
@@ -360,7 +366,7 @@ export default function MacroPlanContent() {
   // ── Draft mutations ──────────────────────────────────────────────────────
 
   const updateItem = useCallback(
-    (mealId: string, itemId: string, field: "name" | "quantity", value: string) => {
+    (mealId: string, itemId: string, field: "name" | "quantity" | "notes", value: string) => {
       setDraft((d) => {
         if (!d) return d;
         return {

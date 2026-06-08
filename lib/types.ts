@@ -167,6 +167,7 @@ export interface MacroFoodItem {
   protein: number;
   carbs: number;
   fat: number;
+  notes?: string;
 }
 
 export interface MacroMeal {

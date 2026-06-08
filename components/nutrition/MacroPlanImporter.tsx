@@ -80,8 +80,9 @@ function dayTypeLabel(t: MacroDayType): string {
 function parseFoodItem(raw: unknown): MacroFoodItem | null {
   if (!raw || typeof raw !== "object") return null;
   const item = raw as Record<string, unknown>;
-  const name = String(item.name ?? item.food ?? "").trim();
+  const name = String(item.name ?? item.food ?? item.item ?? "").trim();
   if (!name) return null;
+  const notes = String(item.notes ?? item.note ?? "").trim();
   return {
     id: uid(),
     name,
@@ -90,6 +91,7 @@ function parseFoodItem(raw: unknown): MacroFoodItem | null {
     protein: toNumber(item.protein ?? item.proteinG),
     carbs: toNumber(item.carbs ?? item.carbsG ?? item.carbohydrates),
     fat: toNumber(item.fat ?? item.fatG),
+    notes: notes || undefined,
   };
 }
 
