@@ -98,8 +98,27 @@ function parseExerciseGroups(raw: unknown): DetailedExerciseGroup[] {
     if (nestedRaw) {
       const exs = nestedRaw.map(parseExercise).filter((x): x is DetailedExercise => x !== null);
       if (exs.length > 0) {
-        const label = optStr(obj.label ?? obj.name ?? obj.group ?? obj.supersetGroup ?? obj.title);
-        groups.push({ id: uid(), label, isSuperset: exs.length > 1, exercises: exs });
+        const label = optStr(obj.label ?? obj.group ?? obj.supersetGroup);
+        const groupName = optStr(obj.groupName ?? obj.group_name ?? obj.name ?? obj.title);
+        const rounds = optStr(obj.rounds ?? obj.round ?? obj.numRounds ?? obj.numberOfRounds);
+        const restAfterPair = optStr(
+          obj.restAfterPair ??
+            obj.rest_after_pair ??
+            obj.restAfterRound ??
+            obj.restAfterSuperset ??
+            obj.restAfter ??
+            obj.pairRest ??
+            obj.groupRest
+        );
+        groups.push({
+          id: uid(),
+          label,
+          groupName,
+          rounds,
+          restAfterPair,
+          isSuperset: exs.length > 1,
+          exercises: exs,
+        });
       }
       continue;
     }
@@ -323,6 +342,49 @@ export function parseDetailedBlockFile(raw: unknown): DetailedBlockImportData | 
   return { name, period, focus, targets, weeklySchedule, beforeEverySession, dayAddOns, days, progressionTables };
 }
 
+/** Explains why `parseDetailedBlockFile` returned null, for user-facing error messages. */
+export function describeDetailedBlockIssue(raw: unknown): { title: string; description: string } {
+  if (!raw || typeof raw !== "object") {
+    return {
+      title: "Could not read this file.",
+      description: "Expected a JSON object with a \"detailed_block\" type.",
+    };
+  }
+  const obj = raw as Record<string, unknown>;
+
+  if (obj.type !== "detailed_block") {
+    const type = typeof obj.type === "string" ? obj.type : undefined;
+    if (type === "workout-plan" || type === "workout_only" || (Array.isArray(obj.blocks) && !type)) {
+      return {
+        title: "This is a simple routine plan, not a Detailed Block.",
+        description: 'Use the "Import Plan" section in the Routines tab instead.',
+      };
+    }
+    if (type === "nutrition-plan" || type === "nutrition_only" || type === "macro-plan") {
+      return {
+        title: "This is a nutrition/macro plan, not a Detailed Block.",
+        description: "Import it from the Nutrition tab instead.",
+      };
+    }
+    return {
+      title: type ? `Unrecognized type "${type}".` : "Missing or unrecognized \"type\" field.",
+      description: 'Expected { "type": "detailed_block", "days": [...] } — see Ironclad_DetailedBlock_Format.md.',
+    };
+  }
+
+  if (!Array.isArray(obj.days) || obj.days.length === 0) {
+    return {
+      title: "No training days found.",
+      description: 'A detailed block needs a non-empty "days" array — see Ironclad_DetailedBlock_Format.md.',
+    };
+  }
+
+  return {
+    title: "Couldn't parse any training days.",
+    description: "Check that each day has at least one recognised section (e.g. heavyCompounds, supersetGroups, core).",
+  };
+}
+
 // ─── Totals helper ────────────────────────────────────────────────────────────
 
 function countExercises(days: DetailedBlockDay[]): number {
@@ -403,10 +465,8 @@ export default function DetailedBlockImporter() {
         const data = parseDetailedBlockFile(raw);
 
         if (!data) {
-          toast.error("No detailed block recognised in this file.", {
-            description:
-              'Expected { type: "detailed_block", days: [...] } — see Ironclad_DetailedBlock_Format.md.',
-          });
+          const { title, description } = describeDetailedBlockIssue(raw);
+          toast.error(title, { description });
           return;
         }
 

@@ -216,6 +216,12 @@ export interface DetailedExercise {
 export interface DetailedExerciseGroup {
   id: string;
   label?: string;
+  /** Descriptive name of the superset group, e.g. "Push/Pull Superset". */
+  groupName?: string;
+  /** Number of rounds the superset is repeated for, e.g. "3". */
+  rounds?: string;
+  /** Shared rest taken after completing one full round of the superset. */
+  restAfterPair?: string;
   isSuperset: boolean;
   exercises: DetailedExercise[];
 }

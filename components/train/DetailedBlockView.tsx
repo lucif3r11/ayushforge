@@ -187,15 +187,30 @@ function GroupBlock({ group }: { group: DetailedExerciseGroup }) {
   if (group.isSuperset) {
     return (
       <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 pt-2.5 pb-3 space-y-3">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-bold tracking-[0.12em] uppercase text-primary/70">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] font-bold tracking-[0.12em] uppercase text-primary/70 shrink-0">
             {group.label ? `Superset ${group.label}` : "Superset"}
           </span>
-          <div className="flex-1 h-px bg-primary/15" />
+          {group.groupName && (
+            <span className="text-[11px] font-semibold text-foreground/80 truncate">
+              {group.groupName}
+            </span>
+          )}
+          <div className="flex-1 h-px bg-primary/15 min-w-2" />
+          {group.rounds && (
+            <Badge variant="secondary" className="text-[9px] h-4 px-1.5 shrink-0">
+              {group.rounds} round{group.rounds === "1" ? "" : "s"}
+            </Badge>
+          )}
         </div>
         {group.exercises.map((ex, j) => (
           <ExerciseRow key={ex.id} ex={ex} indexLabel={String.fromCharCode(65 + j)} />
         ))}
+        {group.restAfterPair && (
+          <p className="text-[11px] text-primary/70 leading-snug pt-1 border-t border-primary/10">
+            Rest after round: {group.restAfterPair}
+          </p>
+        )}
       </div>
     );
   }

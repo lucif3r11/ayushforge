@@ -209,8 +209,22 @@ the nested form is rendered as a **superset** (lettered A/B/C…) when it
 contains more than one exercise:
 
 ```json
-{ "label": "A", "exercises": [ { "name": "..." }, { "name": "..." } ] }
+{
+  "label": "A",
+  "groupName": "Push/Pull Superset",
+  "rounds": "3",
+  "restAfterPair": "90 sec",
+  "exercises": [ { "name": "..." }, { "name": "..." } ]
+}
 ```
+
+| Field           | Type          | Notes                                                                 |
+|-----------------|---------------|------------------------------------------------------------------------|
+| `label`         | string        | Short letter shown as "Superset A" (aliases: `group`, `supersetGroup`) |
+| `groupName`     | string        | Descriptive name shown next to the label (aliases: `name`, `title`, `group_name`) |
+| `rounds`        | string/number | Number of times the pair is repeated (aliases: `round`, `numRounds`)  |
+| `restAfterPair` | string/number | Shared rest taken after completing one round of the superset (aliases: `restAfterRound`, `restAfterSuperset`, `restAfter`, `pairRest`, `groupRest`) |
+| `exercises`     | array         | The exercises performed back-to-back (aliases: `pair`, `items`)        |
 
 Alternatively, a flat list of exercises can be paired into a superset by
 giving consecutive items the same `supersetGroup` (or `group`/`pairGroup`)
@@ -254,3 +268,7 @@ Ironclad will preview the block name, targets, and per-day section/exercise
 counts before saving it locally — imported blocks persist alongside (and
 independently of) your simple routines, and you can switch between the two
 views with the toggle at the top of the Train tab.
+
+You can also drop a `detailed_block` file onto the "Import Plan" importer in
+the Routines tab — Ironclad detects the type, imports it, and automatically
+switches you to the Detailed Blocks tab.

@@ -437,7 +437,11 @@ function CreateBlockForm({ onClose }: { onClose: () => void }) {
 
 // ─── Import plan collapsible section ─────────────────────────────────────────
 
-function ImportPlanSection() {
+function ImportPlanSection({
+  onDetailedBlockImported,
+}: {
+  onDetailedBlockImported: (name: string) => void;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -466,7 +470,7 @@ function ImportPlanSection() {
         <>
           <Separator />
           <CardContent className="pt-4 pb-4">
-            <WorkoutPlanImporter />
+            <WorkoutPlanImporter onDetailedBlockImported={onDetailedBlockImported} />
           </CardContent>
         </>
       )}
@@ -603,6 +607,11 @@ export default function TrainContent() {
           )}
         </button>
       </div>
+      <p className="text-[11px] text-muted-foreground -mt-3 px-0.5">
+        {viewMode === "routines"
+          ? "Simple sets/reps routines, organized into training blocks."
+          : "Rich, day-by-day plans with tempo, RPE, supersets, and progression tables."}
+      </p>
 
       {viewMode === "blocks" ? (
         <DetailedBlockView />
@@ -697,7 +706,9 @@ export default function TrainContent() {
       )}
 
       {/* ── Import Plan ───────────────────────────────── */}
-      <ImportPlanSection />
+      <ImportPlanSection
+        onDetailedBlockImported={() => handleViewModeChange("blocks")}
+      />
         </>
       )}
 

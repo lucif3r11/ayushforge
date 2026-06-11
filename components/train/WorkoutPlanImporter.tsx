@@ -15,6 +15,7 @@ import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { parseDetailedBlockFile } from "@/components/train/DetailedBlockImporter";
 import type { WorkoutImportBlock, ConflictStrategy } from "@/lib/types";
 
 // ─── File parsing ─────────────────────────────────────────────────────────────
@@ -115,6 +116,35 @@ function parsePlanFile(raw: unknown): WorkoutImportBlock[] | null {
   }
 
   return null;
+}
+
+/** Explains why `parsePlanFile` returned null/empty, for user-facing error messages. */
+function describePlanIssue(raw: unknown): { title: string; description: string } {
+  if (!raw || typeof raw !== "object") {
+    return {
+      title: "Could not read this file.",
+      description: "Expected a JSON object with workout blocks.",
+    };
+  }
+  const obj = raw as Record<string, unknown>;
+  const type = typeof obj.type === "string" ? obj.type : undefined;
+
+  if (type === "nutrition-plan" || type === "nutrition_only" || type === "macro-plan") {
+    return {
+      title: "This is a nutrition/macro plan, not a workout plan.",
+      description: "Import it from the Nutrition tab instead.",
+    };
+  }
+  if (type) {
+    return {
+      title: `Unrecognized file type "${type}".`,
+      description: 'Expected "workout-plan", an Ironclad backup, "detailed_block", or { "blocks": [...] }.',
+    };
+  }
+  return {
+    title: "No workout blocks found.",
+    description: 'The file must contain { "blocks": [...] } with routines, or be an Ironclad backup.',
+  };
 }
 
 // ─── Block preview card ───────────────────────────────────────────────────────
@@ -232,7 +262,12 @@ interface ImportResult {
   routinesAdded: number;
 }
 
-export default function WorkoutPlanImporter() {
+export default function WorkoutPlanImporter({
+  onDetailedBlockImported,
+}: {
+  /** Called when a `detailed_block` JSON was dropped here and imported into the Detailed Blocks tab. */
+  onDetailedBlockImported?: (name: string) => void;
+} = {}) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [step, setStep] = useState<Step>("idle");
@@ -243,6 +278,7 @@ export default function WorkoutPlanImporter() {
 
   const existingBlocks = useAppStore((s) => s.blocks);
   const importWorkoutPlanData = useAppStore((s) => s.importWorkoutPlanData);
+  const addDetailedBlock = useAppStore((s) => s.addDetailedBlock);
 
   const existingNames = new Set(existingBlocks.map((b) => b.name.toLowerCase()));
 
@@ -253,12 +289,31 @@ export default function WorkoutPlanImporter() {
       file.text().then((text) => {
         try {
           const raw = JSON.parse(text);
+          const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+
+          // Detailed Block JSON dropped on the Routines importer — hand it
+          // off to the Detailed Blocks tab instead of failing.
+          if (obj.type === "detailed_block") {
+            const detailed = parseDetailedBlockFile(raw);
+            if (detailed) {
+              addDetailedBlock(detailed);
+              toast.success("Detailed block imported!", {
+                description: `"${detailed.name}" was added — switched to the Detailed Blocks tab.`,
+              });
+              onDetailedBlockImported?.(detailed.name);
+              return;
+            }
+            toast.error("Couldn't read this detailed block.", {
+              description: 'It has type "detailed_block" but is missing a non-empty "days" array.',
+            });
+            return;
+          }
+
           const blocks = parsePlanFile(raw);
 
           if (!blocks || blocks.length === 0) {
-            toast.error("No workout blocks found.", {
-              description: "The file must contain blocks with routines.",
-            });
+            const { title, description } = describePlanIssue(raw);
+            toast.error(title, { description });
             return;
           }
 
@@ -279,7 +334,7 @@ export default function WorkoutPlanImporter() {
         }
       });
     },
-    [existingNames] // eslint-disable-line react-hooks/exhaustive-deps
+    [existingNames, addDetailedBlock, onDetailedBlockImported] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // ── Drag & drop ───────────────────────────────────────────────────────────
@@ -498,8 +553,10 @@ export default function WorkoutPlanImporter() {
       />
 
       <p className="text-xs text-muted-foreground text-center">
-        Accepts Ironclad backups or{" "}
-        <code className="text-xs bg-muted px-1 py-0.5 rounded">workout-plan</code> JSON.
+        Accepts Ironclad backups,{" "}
+        <code className="text-xs bg-muted px-1 py-0.5 rounded">workout-plan</code>, or{" "}
+        <code className="text-xs bg-muted px-1 py-0.5 rounded">detailed_block</code> JSON
+        (routed to the Detailed Blocks tab).
       </p>
     </div>
   );
