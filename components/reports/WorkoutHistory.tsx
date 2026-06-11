@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { cn, isBodyweightExercise } from "@/lib/utils";
+import { cn, isBodyweightExercise, weightToInputString, parseWeightKg, formatWeightDisplay } from "@/lib/utils";
 import type { WorkoutLog, SetType } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -46,6 +46,8 @@ interface EditExercise {
   id: string;
   exerciseId: string;
   exerciseName: string;
+  /** Set when the exercise name was edited for this logged session only. */
+  originalExerciseName?: string;
   sets: EditSet[];
   notes: string;
 }
@@ -66,12 +68,13 @@ function toEdit(log: WorkoutLog): EditWorkout {
       id: ex.id,
       exerciseId: ex.exerciseId,
       exerciseName: ex.exerciseName,
+      originalExerciseName: ex.originalExerciseName,
       notes: ex.notes ?? "",
       sets: ex.sets.map((s) => ({
         id: s.id,
         setNumber: s.setNumber,
         type: s.type,
-        weight: s.weight > 0 ? String(s.weight) : "",
+        weight: weightToInputString(s.weight),
         reps: s.reps > 0 ? String(s.reps) : "",
         rpe: s.rpe !== undefined ? String(s.rpe) : "",
         notes: s.notes ?? "",
@@ -95,12 +98,13 @@ function applyEdit(original: WorkoutLog, editable: EditWorkout): Omit<WorkoutLog
       id: ex.id,
       exerciseId: ex.exerciseId,
       exerciseName: ex.exerciseName,
+      ...(ex.originalExerciseName ? { originalExerciseName: ex.originalExerciseName } : {}),
       notes: ex.notes.trim() || undefined,
       sets: ex.sets.map((s, i) => ({
         id: s.id,
         setNumber: i + 1,
         type: s.type,
-        weight: parseFloat(s.weight) || 0,
+        weight: s.weight.trim(),
         reps: parseInt(s.reps) || 0,
         rpe: s.rpe ? parseFloat(s.rpe) : undefined,
         notes: s.notes.trim() || undefined,
@@ -128,7 +132,7 @@ function WorkoutItem({
   const totalSets = log.exercises.reduce((a, ex) => a + ex.sets.length, 0);
   const totalVol = Math.round(
     log.exercises.reduce(
-      (a, ex) => a + ex.sets.reduce((b, s) => b + s.weight * s.reps, 0),
+      (a, ex) => a + ex.sets.reduce((b, s) => b + parseWeightKg(s.weight) * s.reps, 0),
       0
     )
   );
@@ -195,6 +199,23 @@ function WorkoutItem({
     },
     []
   );
+
+  const patchExerciseName = useCallback((exIdx: number, newName: string) => {
+    setDraft((d) => {
+      if (!d) return d;
+      return {
+        ...d,
+        exercises: d.exercises.map((ex, ei) => {
+          if (ei !== exIdx) return ex;
+          const baseline = ex.originalExerciseName ?? ex.exerciseName;
+          if (newName === baseline) {
+            return { ...ex, exerciseName: newName, originalExerciseName: undefined };
+          }
+          return { ...ex, exerciseName: newName, originalExerciseName: baseline };
+        }),
+      };
+    });
+  }, []);
 
   const removeExercise = useCallback((exIdx: number) => {
     setDraft((d) => {
@@ -361,7 +382,19 @@ function WorkoutItem({
                     {/* Exercise header */}
                     <div className="flex items-center gap-2">
                       <Dumbbell className="h-3.5 w-3.5 text-primary shrink-0" />
-                      <p className="text-sm font-semibold flex-1 truncate">{ex.exerciseName}</p>
+                      <Input
+                        value={ex.exerciseName}
+                        onChange={(e) => patchExerciseName(exIdx, e.target.value)}
+                        title={
+                          ex.originalExerciseName
+                            ? `Originally "${ex.originalExerciseName}"`
+                            : undefined
+                        }
+                        className={cn(
+                          "h-8 text-sm font-semibold flex-1 min-w-0 px-2",
+                          ex.originalExerciseName && "italic"
+                        )}
+                      />
                       {bw && (
                         <span className="text-[10px] font-semibold text-muted-foreground bg-muted rounded px-1.5 py-0.5 shrink-0">
                           BW
@@ -380,11 +413,8 @@ function WorkoutItem({
                     {/* Column labels */}
                     <div className="flex items-center gap-2 pl-1">
                       <span className="w-5 text-[10px] text-muted-foreground shrink-0">#</span>
-                      <span className={cn(
-                        "flex-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground",
-                        bw && "opacity-0 pointer-events-none"
-                      )}>
-                        kg
+                      <span className="flex-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {bw ? "bw" : "kg"}
                       </span>
                       <span className="flex-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         reps
@@ -401,24 +431,15 @@ function WorkoutItem({
                         <span className="text-xs text-muted-foreground w-5 text-right shrink-0 tabular-nums">
                           {setIdx + 1}
                         </span>
-                        {/* Weight or BW badge */}
-                        {bw ? (
-                          <div className="flex-1 flex items-center justify-center">
-                            <span className="text-xs font-semibold text-muted-foreground bg-muted rounded-md px-2 py-1.5">
-                              BW
-                            </span>
-                          </div>
-                        ) : (
-                          <Input
-                            type="number"
-                            value={s.weight}
-                            onChange={(e) => patchSet(exIdx, setIdx, "weight", e.target.value)}
-                            className="h-9 text-center text-sm"
-                            placeholder="kg"
-                            min="0"
-                            step="0.5"
-                          />
-                        )}
+                        {/* Weight (alphanumeric — accepts "80", "BW", "BW + 10kg", "Assisted", etc.) */}
+                        <Input
+                          type="text"
+                          inputMode="text"
+                          value={s.weight}
+                          onChange={(e) => patchSet(exIdx, setIdx, "weight", e.target.value)}
+                          className="h-9 text-center text-sm"
+                          placeholder={bw ? "BW" : "kg"}
+                        />
                         <Input
                           type="number"
                           value={s.reps}
@@ -497,7 +518,19 @@ function WorkoutItem({
                   <div key={ex.id}>
                     <div className="flex items-center gap-2 mb-1.5">
                       <Dumbbell className="h-3.5 w-3.5 text-primary shrink-0" />
-                      <p className="text-xs font-semibold">{ex.exerciseName}</p>
+                      <p
+                        className={cn(
+                          "text-xs font-semibold",
+                          ex.originalExerciseName && "italic text-muted-foreground"
+                        )}
+                        title={
+                          ex.originalExerciseName
+                            ? `Originally "${ex.originalExerciseName}"`
+                            : undefined
+                        }
+                      >
+                        {ex.exerciseName}
+                      </p>
                       {bw && (
                         <span className="text-[10px] font-semibold text-muted-foreground bg-muted rounded px-1.5 py-0.5">
                           BW
@@ -512,7 +545,7 @@ function WorkoutItem({
                         >
                           <span className="w-4 text-right">{i + 1}.</span>
                           <span className="font-medium text-foreground">
-                            {bw || s.weight === 0 ? "BW" : `${s.weight} kg`} × {s.reps}
+                            {formatWeightDisplay(s.weight, bw)} × {s.reps}
                           </span>
                           {s.rpe !== undefined && <span>· RPE {s.rpe}</span>}
                         </div>

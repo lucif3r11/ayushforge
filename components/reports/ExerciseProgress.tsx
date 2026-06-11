@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { TrendingUp } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { parseWeightKg } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -88,9 +89,9 @@ export default function ExerciseProgress() {
       .filter((l) => l.exercises.some((ex) => ex.exerciseId === selectedId))
       .map((log) => {
         const ex = log.exercises.find((e) => e.exerciseId === selectedId)!;
-        const valid = ex.sets.filter((s) => s.weight > 0 && s.reps > 0);
-        const maxWeight = valid.length > 0 ? Math.max(...valid.map((s) => s.weight)) : 0;
-        const volume   = Math.round(valid.reduce((a, s) => a + s.weight * s.reps, 0));
+        const valid = ex.sets.filter((s) => parseWeightKg(s.weight) > 0 && s.reps > 0);
+        const maxWeight = valid.length > 0 ? Math.max(...valid.map((s) => parseWeightKg(s.weight))) : 0;
+        const volume   = Math.round(valid.reduce((a, s) => a + parseWeightKg(s.weight) * s.reps, 0));
         return { date: format(parseISO(log.date), "MMM d"), weight: maxWeight, volume };
       });
   }, [selectedId, workoutLogs]);

@@ -31,7 +31,8 @@ export interface SetLog {
   id: string;
   setNumber: number;
   type: SetType;
-  weight: number;
+  /** Free-form weight/load, e.g. "80", "BW", "BW + 10kg", "Assisted". */
+  weight: string;
   reps: number;
   rpe?: number;
   notes?: string;
@@ -41,6 +42,9 @@ export interface ExerciseLog {
   id: string;
   exerciseId: string;
   exerciseName: string;
+  /** Set when the exercise name was edited for this logged session only —
+   *  the original routine / Detailed Block exercise is unaffected. */
+  originalExerciseName?: string;
   sets: SetLog[];
   notes?: string;
 }

@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
+import { parseWeightKg } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -75,7 +76,7 @@ function computeWeeklyVolume(logs: WorkoutLog[]): WeekVolume[] {
     const label = `${format(weekStart, "MMM d")}–${format(addDays(weekStart, 6), "d")}`;
     labelMap.set(key, label);
     const vol = log.exercises.reduce(
-      (a, ex) => a + ex.sets.reduce((b, s) => b + s.weight * s.reps, 0),
+      (a, ex) => a + ex.sets.reduce((b, s) => b + parseWeightKg(s.weight) * s.reps, 0),
       0
     );
     volumeMap.set(key, (volumeMap.get(key) ?? 0) + vol);
@@ -133,14 +134,15 @@ function computePRs(logs: WorkoutLog[]): PREntry[] {
     .forEach((log) => {
       log.exercises.forEach((ex) => {
         ex.sets.forEach((s) => {
-          if (s.weight <= 0 || s.reps <= 0) return;
-          const e1rm = epley(s.weight, s.reps);
+          const w = parseWeightKg(s.weight);
+          if (w <= 0 || s.reps <= 0) return;
+          const e1rm = epley(w, s.reps);
           const cur = map.get(ex.exerciseId);
           if (!cur || e1rm > cur.e1rm) {
             map.set(ex.exerciseId, {
               exerciseId: ex.exerciseId,
               exerciseName: ex.exerciseName,
-              weight: s.weight,
+              weight: w,
               reps: s.reps,
               date: log.date,
               e1rm,
@@ -160,7 +162,7 @@ function computeStrengthProgression(
     .filter((l) => l.exercises.some((ex) => ex.exerciseId === exerciseId))
     .map((log) => {
       const ex = log.exercises.find((e) => e.exerciseId === exerciseId)!;
-      const maxW = Math.max(...ex.sets.filter((s) => s.weight > 0).map((s) => s.weight));
+      const maxW = Math.max(...ex.sets.map((s) => parseWeightKg(s.weight)).filter((w) => w > 0));
       return { date: format(parseISO(log.date), "MMM d"), weight: maxW };
     })
     .sort((a, b) => a.date.localeCompare(b.date));

@@ -13,6 +13,7 @@ import {
   startOfDay,
 } from "date-fns";
 import type { Block, WorkoutLog, BodyEntry, Routine } from "./types";
+import { parseWeightKg } from "./utils";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
@@ -247,8 +248,9 @@ export async function generateBlockReportPDF(
     l.exercises.forEach((ex) => {
       const cur = exMap.get(ex.exerciseId) ?? { name: ex.exerciseName, sessions: 0, bestW: 0, bestR: 0 };
       ex.sets.forEach((s) => {
-        if (s.weight > cur.bestW || (s.weight === cur.bestW && s.reps > cur.bestR)) {
-          cur.bestW = s.weight;
+        const w = parseWeightKg(s.weight);
+        if (w > cur.bestW || (w === cur.bestW && s.reps > cur.bestR)) {
+          cur.bestW = w;
           cur.bestR = s.reps;
         }
       });

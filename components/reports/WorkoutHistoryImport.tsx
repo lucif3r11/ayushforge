@@ -5,13 +5,14 @@ import { Upload, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
+import { weightToInputString } from "@/lib/utils";
 import type { SetType } from "@/lib/types";
 
 // ─── Exported file shape ──────────────────────────────────────────────────────
 
 interface ExportedSet {
   setNumber: number;
-  weight: number;
+  weight?: string | number;
   reps: number;
   rpe?: number;
   notes?: string;
@@ -128,7 +129,7 @@ export default function WorkoutHistoryImport() {
               id: uid(),
               setNumber: s.setNumber,
               type: "normal" as SetType,
-              weight: s.weight ?? 0,
+              weight: weightToInputString(s.weight),
               reps: s.reps ?? 0,
               rpe: s.rpe,
               notes: s.notes || undefined,

@@ -18,6 +18,7 @@ import {
   Check,
   Ban,
   Undo2,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
@@ -28,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { cn, isBodyweightExercise } from "@/lib/utils";
+import { cn, isBodyweightExercise, weightToInputString } from "@/lib/utils";
 import type { SetType, Routine, WorkoutLog } from "@/lib/types";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
@@ -49,6 +50,8 @@ interface ExerciseEntry {
   localId: string;
   exerciseId: string;
   exerciseName: string;
+  /** Set when the user renamed this exercise for this session only. */
+  originalExerciseName?: string;
   sets: SetRow[];
   prefilledFromDate?: string;
   skipped: boolean;
@@ -97,7 +100,7 @@ function getPrefilledSets(
   return {
     sets: entry.sets.map((s) => ({
       localId: uid(),
-      weight: s.weight > 0 ? String(s.weight) : "",
+      weight: weightToInputString(s.weight),
       reps: s.reps > 0 ? String(s.reps) : "",
       rpe: s.rpe !== undefined ? String(s.rpe) : "",
       notes: "",
@@ -377,28 +380,18 @@ function SetRowComponent({
         {index + 1}
       </span>
 
-      {/* Weight or BW badge */}
-      {isBodyweight ? (
-        <div className="flex-1 flex items-center justify-center">
-          <span className="text-xs font-semibold text-muted-foreground bg-muted rounded-md px-2 py-1">
-            BW
-          </span>
-        </div>
-      ) : (
-        <Input
-          type="number"
-          inputMode="decimal"
-          placeholder="kg"
-          value={set.weight}
-          onChange={(e) => onChange("weight", e.target.value)}
-          className={cn(
-            "h-10 text-center px-2 text-sm font-medium min-w-0 transition-opacity",
-            set.done && "opacity-60"
-          )}
-          min="0"
-          step="0.5"
-        />
-      )}
+      {/* Weight (alphanumeric — accepts "80", "BW", "BW + 10kg", "Assisted", etc.) */}
+      <Input
+        type="text"
+        inputMode="text"
+        placeholder={isBodyweight ? "BW" : "kg"}
+        value={set.weight}
+        onChange={(e) => onChange("weight", e.target.value)}
+        className={cn(
+          "h-10 text-center px-2 text-sm font-medium min-w-0 transition-opacity",
+          set.done && "opacity-60"
+        )}
+      />
 
       {/* Reps */}
       <Input
@@ -457,6 +450,7 @@ function ExerciseCard({
   onRemoveSet,
   onUpdateSet,
   onToggleSetDone,
+  onRenameExercise,
   isBodyweight,
 }: {
   entry: ExerciseEntry;
@@ -466,10 +460,20 @@ function ExerciseCard({
   onRemoveSet: (setLocalId: string) => void;
   onUpdateSet: (setLocalId: string, field: EditableSetField, value: string) => void;
   onToggleSetDone: (setLocalId: string) => void;
+  onRenameExercise: (name: string) => void;
   isBodyweight?: boolean;
 }) {
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(entry.exerciseName);
+
   const doneCount = entry.sets.filter((s) => s.done).length;
   const allDone = doneCount === entry.sets.length && entry.sets.length > 0;
+
+  const commitName = () => {
+    const trimmed = nameDraft.trim();
+    onRenameExercise(trimmed || entry.exerciseName);
+    setEditingName(false);
+  };
 
   // ── Skipped state — compact collapsed row ─────────────────────────────────
   if (entry.skipped) {
@@ -507,7 +511,48 @@ function ExerciseCard({
               )}
               strokeWidth={2}
             />
-            <h3 className="font-semibold text-sm truncate">{entry.exerciseName}</h3>
+            {editingName ? (
+              <Input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={commitName}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitName();
+                  if (e.key === "Escape") {
+                    setNameDraft(entry.exerciseName);
+                    setEditingName(false);
+                  }
+                }}
+                className="h-7 text-sm font-semibold px-1.5 flex-1 min-w-0"
+              />
+            ) : (
+              <h3
+                className={cn(
+                  "font-semibold text-sm truncate",
+                  entry.originalExerciseName && "italic text-muted-foreground"
+                )}
+                title={
+                  entry.originalExerciseName
+                    ? `Originally "${entry.originalExerciseName}"`
+                    : undefined
+                }
+              >
+                {entry.exerciseName}
+              </h3>
+            )}
+            {!editingName && (
+              <button
+                onClick={() => {
+                  setNameDraft(entry.exerciseName);
+                  setEditingName(true);
+                }}
+                title="Rename for this session"
+                className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
           </div>
           {doneCount > 0 && (
             <p
@@ -713,6 +758,19 @@ export default function LogWorkoutContent() {
     );
   }, []);
 
+  const updateExerciseName = useCallback((localId: string, newName: string) => {
+    setExercises((prev) =>
+      prev.map((e) => {
+        if (e.localId !== localId) return e;
+        const baseline = e.originalExerciseName ?? e.exerciseName;
+        if (newName === baseline) {
+          return { ...e, exerciseName: newName, originalExerciseName: undefined };
+        }
+        return { ...e, exerciseName: newName, originalExerciseName: baseline };
+      })
+    );
+  }, []);
+
   const addSet = useCallback((exerciseLocalId: string) => {
     setExercises((prev) =>
       prev.map((e) =>
@@ -848,13 +906,14 @@ export default function LogWorkoutContent() {
         id: uid(),
         exerciseId: e.exerciseId,
         exerciseName: e.exerciseName,
+        ...(e.originalExerciseName ? { originalExerciseName: e.originalExerciseName } : {}),
         sets: e.sets
           .filter((s) => s.reps !== "" || s.weight !== "")
           .map((s, i) => ({
             id: uid(),
             setNumber: i + 1,
             type: "normal" as SetType,
-            weight: parseFloat(s.weight) || 0,
+            weight: s.weight.trim(),
             reps: parseInt(s.reps) || 0,
             rpe: s.rpe ? parseFloat(s.rpe) : undefined,
             notes: s.notes.trim() || undefined,
@@ -1035,6 +1094,7 @@ export default function LogWorkoutContent() {
                     updateSet(entry.localId, sid, field, val)
                   }
                   onToggleSetDone={(sid) => toggleSetDone(entry.localId, sid)}
+                  onRenameExercise={(name) => updateExerciseName(entry.localId, name)}
                 />
               );
             })}
