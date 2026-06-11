@@ -138,7 +138,9 @@ function ExerciseRow({ ex, indexLabel }: { ex: DetailedExercise; indexLabel?: st
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2 min-w-0">
           {indexLabel && (
-            <span className="text-xs font-bold text-primary/60 shrink-0 mt-0.5 w-4">{indexLabel}</span>
+            <span className="flex items-center justify-center h-4 w-4 rounded-full bg-primary/15 text-[10px] font-bold text-primary shrink-0 mt-0.5">
+              {indexLabel}
+            </span>
           )}
           <p className="text-sm font-medium leading-snug">{ex.name}</p>
         </div>
@@ -203,9 +205,13 @@ function GroupBlock({ group }: { group: DetailedExerciseGroup }) {
             </Badge>
           )}
         </div>
-        {group.exercises.map((ex, j) => (
-          <ExerciseRow key={ex.id} ex={ex} indexLabel={String.fromCharCode(65 + j)} />
-        ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {group.exercises.map((ex, j) => (
+            <div key={ex.id} className="rounded-md border border-primary/15 bg-background/60 p-2">
+              <ExerciseRow ex={ex} indexLabel={String.fromCharCode(65 + j)} />
+            </div>
+          ))}
+        </div>
         {group.restAfterPair && (
           <p className="text-[11px] text-primary/70 leading-snug pt-1 border-t border-primary/10">
             Rest after round: {group.restAfterPair}

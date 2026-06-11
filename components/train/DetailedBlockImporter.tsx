@@ -73,10 +73,40 @@ function parseExercise(raw: unknown): DetailedExercise | null {
   };
 }
 
+/** Pulls a back-to-back exercise list out of a group-like object, under any accepted key. */
+function nestedExercisesArray(obj: Record<string, unknown>): unknown[] | null {
+  if (Array.isArray(obj.exercises)) return obj.exercises;
+  if (Array.isArray(obj.pair)) return obj.pair;
+  if (Array.isArray(obj.items)) return obj.items;
+  return null;
+}
+
+/** Builds a superset/group descriptor from a group-like object and its already-parsed exercises. */
+function buildExerciseGroup(obj: Record<string, unknown>, exs: DetailedExercise[]): DetailedExerciseGroup {
+  return {
+    id: uid(),
+    label: optStr(obj.label ?? obj.group ?? obj.supersetGroup),
+    groupName: optStr(obj.groupName ?? obj.group_name ?? obj.name ?? obj.title),
+    rounds: optStr(obj.rounds ?? obj.round ?? obj.numRounds ?? obj.numberOfRounds),
+    restAfterPair: optStr(
+      obj.restAfterPair ??
+        obj.rest_after_pair ??
+        obj.restAfterRound ??
+        obj.restAfterSuperset ??
+        obj.restAfter ??
+        obj.pairRest ??
+        obj.groupRest
+    ),
+    isSuperset: exs.length > 1,
+    exercises: exs,
+  };
+}
+
 /**
  * Accepts a flat array of exercises (optionally tagged with a `supersetGroup`/
- * `group` key to pair them) or an array of explicit groups shaped like
- * { label, exercises: [...] } / { pair: [...] }.
+ * `group` key to pair them), an array of explicit groups shaped like
+ * { label, exercises: [...] } / { pair: [...] }, or items that wrap one or
+ * more such groups via { type: "supersetGroup", supersetGroups: [...] }.
  */
 function parseExerciseGroups(raw: unknown): DetailedExerciseGroup[] {
   if (!Array.isArray(raw)) return [];
@@ -87,42 +117,33 @@ function parseExerciseGroups(raw: unknown): DetailedExerciseGroup[] {
     if (!item || typeof item !== "object") continue;
     const obj = item as Record<string, unknown>;
 
-    const nestedRaw = Array.isArray(obj.exercises)
-      ? obj.exercises
-      : Array.isArray(obj.pair)
-      ? obj.pair
-      : Array.isArray(obj.items)
-      ? obj.items
+    // Wrapper form: { type: "supersetGroup", supersetGroups: [ { groupName, rounds, restAfterPair, exercises: [...] }, ... ] }
+    const wrapped = Array.isArray(obj.supersetGroups)
+      ? obj.supersetGroups
+      : obj.supersetGroups && typeof obj.supersetGroups === "object"
+      ? [obj.supersetGroups]
       : null;
-
-    if (nestedRaw) {
-      const exs = nestedRaw.map(parseExercise).filter((x): x is DetailedExercise => x !== null);
-      if (exs.length > 0) {
-        const label = optStr(obj.label ?? obj.group ?? obj.supersetGroup);
-        const groupName = optStr(obj.groupName ?? obj.group_name ?? obj.name ?? obj.title);
-        const rounds = optStr(obj.rounds ?? obj.round ?? obj.numRounds ?? obj.numberOfRounds);
-        const restAfterPair = optStr(
-          obj.restAfterPair ??
-            obj.rest_after_pair ??
-            obj.restAfterRound ??
-            obj.restAfterSuperset ??
-            obj.restAfter ??
-            obj.pairRest ??
-            obj.groupRest
-        );
-        groups.push({
-          id: uid(),
-          label,
-          groupName,
-          rounds,
-          restAfterPair,
-          isSuperset: exs.length > 1,
-          exercises: exs,
-        });
+    if (wrapped) {
+      for (const g of wrapped) {
+        if (!g || typeof g !== "object") continue;
+        const gObj = g as Record<string, unknown>;
+        const nested = nestedExercisesArray(gObj);
+        if (!nested) continue;
+        const exs = nested.map(parseExercise).filter((x): x is DetailedExercise => x !== null);
+        if (exs.length > 0) groups.push(buildExerciseGroup(gObj, exs));
       }
       continue;
     }
 
+    // Single-group form: { label, groupName, rounds, restAfterPair, exercises: [...] }
+    const nestedRaw = nestedExercisesArray(obj);
+    if (nestedRaw) {
+      const exs = nestedRaw.map(parseExercise).filter((x): x is DetailedExercise => x !== null);
+      if (exs.length > 0) groups.push(buildExerciseGroup(obj, exs));
+      continue;
+    }
+
+    // Flat exercise, optionally paired via a shared supersetGroup/group key
     const ex = parseExercise(obj);
     if (!ex) continue;
     const ssKey = optStr(obj.supersetGroup ?? obj.group ?? obj.pairGroup);
@@ -142,7 +163,12 @@ function parseExerciseGroups(raw: unknown): DetailedExerciseGroup[] {
   for (const g of groups) {
     if (g.exercises.length <= 1) g.isSuperset = false;
   }
-  return groups;
+
+  // Don't show an exercise both inside a superset and again as a standalone entry.
+  const supersetNames = new Set(
+    groups.filter((g) => g.isSuperset).flatMap((g) => g.exercises.map((e) => e.name.trim().toLowerCase()))
+  );
+  return groups.filter((g) => g.isSuperset || !supersetNames.has(g.exercises[0].name.trim().toLowerCase()));
 }
 
 // ─── Day / section parsing ─────────────────────────────────────────────────────
