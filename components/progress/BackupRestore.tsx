@@ -137,6 +137,7 @@ export default function BackupRestore() {
   const bodyEntries   = useAppStore((s) => s.bodyEntries);
   const nutritionPlan = useAppStore((s) => s.nutritionPlan);
   const macroPlan     = useAppStore((s) => s.macroPlan);
+  const detailedBlocks = useAppStore((s) => s.detailedBlocks);
   const lastExportedAt = useAppStore((s) => s.lastExportedAt);
   const importAllData  = useAppStore((s) => s.importAllData);
   const setLastExportedAt = useAppStore((s) => s.setLastExportedAt);
@@ -159,6 +160,7 @@ export default function BackupRestore() {
         bodyEntries,
         nutritionPlan,
         macroPlan,
+        detailedBlocks,
       },
     };
 

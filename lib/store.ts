@@ -13,6 +13,7 @@ import type {
   BodyEntry,
   NutritionPlan,
   MacroPlan,
+  DetailedBlock,
   WorkoutImportBlock,
   ConflictStrategy,
 } from "./types";
@@ -63,6 +64,11 @@ interface AppStore extends AppData {
   // MacroPlan action
   setMacroPlan: (plan: MacroPlan) => void;
 
+  // DetailedBlock actions
+  addDetailedBlock: (block: Omit<DetailedBlock, "id" | "createdAt" | "updatedAt">) => string;
+  replaceDetailedBlock: (id: string, block: Omit<DetailedBlock, "id" | "createdAt" | "updatedAt">) => void;
+  deleteDetailedBlock: (id: string) => void;
+
   // Backup / restore
   importAllData: (data: Omit<AppData, "lastUpdated" | "lastExportedAt">) => void;
   setLastExportedAt: (ts: string) => void;
@@ -103,6 +109,7 @@ const initialState: AppData = {
     dayPlans: [],
     updatedAt: new Date().toISOString(),
   },
+  detailedBlocks: [],
   lastUpdated: new Date().toISOString(),
 };
 
@@ -254,6 +261,29 @@ export const useAppStore = create<AppStore>()(
       setMacroPlan: (plan) =>
         set({ macroPlan: { ...plan, updatedAt: now() }, lastUpdated: now() }),
 
+      // DetailedBlock actions
+      addDetailedBlock: (block) => {
+        const id = generateId();
+        const ts = now();
+        set((state) => ({
+          detailedBlocks: [...state.detailedBlocks, { ...block, id, createdAt: ts, updatedAt: ts }],
+          lastUpdated: ts,
+        }));
+        return id;
+      },
+      replaceDetailedBlock: (id, block) =>
+        set((state) => ({
+          detailedBlocks: state.detailedBlocks.map((b) =>
+            b.id === id ? { ...block, id, createdAt: b.createdAt, updatedAt: now() } : b
+          ),
+          lastUpdated: now(),
+        })),
+      deleteDetailedBlock: (id) =>
+        set((state) => ({
+          detailedBlocks: state.detailedBlocks.filter((b) => b.id !== id),
+          lastUpdated: now(),
+        })),
+
       // Backup / restore
       importAllData: (data) =>
         set({
@@ -265,6 +295,7 @@ export const useAppStore = create<AppStore>()(
           bodyEntries:   data.bodyEntries   ?? [],
           nutritionPlan: data.nutritionPlan ?? initialState.nutritionPlan,
           macroPlan:     data.macroPlan     ?? initialState.macroPlan,
+          detailedBlocks: data.detailedBlocks ?? [],
           lastUpdated:   now(),
         }),
       setLastExportedAt: (ts) => set({ lastExportedAt: ts }),

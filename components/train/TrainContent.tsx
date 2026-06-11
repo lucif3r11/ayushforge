@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +28,11 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import WorkoutPlanImporter from "@/components/train/WorkoutPlanImporter";
+import DetailedBlockView from "@/components/train/DetailedBlockView";
 import type { Block, Routine, RoutineExercise } from "@/lib/types";
+
+const LS_VIEW_MODE_KEY = "ironclad-train-view-mode";
+type ViewMode = "routines" | "blocks";
 
 // ─── Active block banner ──────────────────────────────────────────────────────
 
@@ -490,12 +495,23 @@ function TrainSkeleton() {
 export default function TrainContent() {
   const [mounted, setMounted] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("routines");
 
   const blocks = useAppStore((s) => s.blocks);
   const routines = useAppStore((s) => s.routines);
+  const detailedBlocks = useAppStore((s) => s.detailedBlocks);
   const setActiveBlock = useAppStore((s) => s.setActiveBlock);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    const saved = localStorage.getItem(LS_VIEW_MODE_KEY);
+    if (saved === "routines" || saved === "blocks") setViewMode(saved);
+  }, []);
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem(LS_VIEW_MODE_KEY, mode);
+  }, []);
 
   const activeBlock = useMemo(() => blocks.find((b) => b.isActive) ?? null, [blocks]);
 
@@ -534,15 +550,17 @@ export default function TrainContent() {
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-bold">Train</h1>
         <div className="flex gap-2">
-          {creating ? (
-            <Button size="sm" variant="outline" onClick={() => setCreating(false)}>
-              Cancel
-            </Button>
-          ) : (
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setCreating(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              New Block
-            </Button>
+          {viewMode === "routines" && (
+            creating ? (
+              <Button size="sm" variant="outline" onClick={() => setCreating(false)}>
+                Cancel
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setCreating(true)}>
+                <Plus className="h-3.5 w-3.5" />
+                New Block
+              </Button>
+            )
           )}
           <Link href="/log">
             <Button size="sm" variant="outline" className="gap-1.5">
@@ -553,6 +571,43 @@ export default function TrainContent() {
         </div>
       </div>
 
+      {/* ── View mode toggle ──────────────────────────── */}
+      <div className="flex gap-1.5">
+        <button
+          onClick={() => handleViewModeChange("routines")}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all",
+            viewMode === "routines"
+              ? "border-primary bg-primary text-primary-foreground shadow-sm"
+              : "border-border text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+          )}
+        >
+          <ListChecks className="h-4 w-4" />
+          Routines
+        </button>
+        <button
+          onClick={() => handleViewModeChange("blocks")}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all",
+            viewMode === "blocks"
+              ? "border-primary bg-primary text-primary-foreground shadow-sm"
+              : "border-border text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+          )}
+        >
+          <Layers className="h-4 w-4" />
+          Detailed Blocks
+          {detailedBlocks.length > 0 && (
+            <Badge variant="secondary" className="text-[10px] h-4 px-1.5 ml-0.5">
+              {detailedBlocks.length}
+            </Badge>
+          )}
+        </button>
+      </div>
+
+      {viewMode === "blocks" ? (
+        <DetailedBlockView />
+      ) : (
+        <>
       {/* ── Create block inline form ──────────────────── */}
       {creating && (
         <CreateBlockForm onClose={() => setCreating(false)} />
@@ -643,6 +698,8 @@ export default function TrainContent() {
 
       {/* ── Import Plan ───────────────────────────────── */}
       <ImportPlanSection />
+        </>
+      )}
 
       {/* ── Log Workout CTA ───────────────────────────── */}
       <Link href="/log" className="block">

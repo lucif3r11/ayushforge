@@ -191,6 +191,80 @@ export interface MacroPlan {
   updatedAt: string;
 }
 
+// ─── Detailed training block (advanced import) ───────────────────────────────
+// See Ironclad_DetailedBlock_Format.md for the import JSON shape.
+
+export interface DetailedExercise {
+  id: string;
+  name: string;
+  sets?: string;
+  reps?: string;
+  load?: string;
+  rpe?: string;
+  tempo?: string;
+  rest?: string;
+  notes?: string;
+  formCues?: string[];
+  loadProgression?: string;
+}
+
+/** A single exercise, or a superset pair/group of exercises performed back-to-back. */
+export interface DetailedExerciseGroup {
+  id: string;
+  label?: string;
+  isSuperset: boolean;
+  exercises: DetailedExercise[];
+}
+
+export interface DetailedBlockSection {
+  id: string;
+  name: string;
+  groups: DetailedExerciseGroup[];
+}
+
+export interface DetailedBlockDay {
+  id: string;
+  name: string;
+  label?: string;
+  estimatedTime?: string;
+  sections: DetailedBlockSection[];
+}
+
+export interface ProgressionRow {
+  week: string;
+  load?: string;
+  sets?: string;
+  reps?: string;
+  rpe?: string;
+  notes?: string;
+}
+
+export interface ProgressionTable {
+  id: string;
+  lift: string;
+  rows: ProgressionRow[];
+}
+
+export interface WeeklyScheduleItem {
+  day: string;
+  label: string;
+}
+
+export interface DetailedBlock {
+  id: string;
+  name: string;
+  period?: string;
+  focus?: string;
+  targets: string[];
+  weeklySchedule: WeeklyScheduleItem[];
+  beforeEverySession: string[];
+  dayAddOns: Record<string, string[]>;
+  days: DetailedBlockDay[];
+  progressionTables: ProgressionTable[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface BodyEntry {
   id: string;
   date: string;           // "YYYY-MM-DD"
@@ -213,6 +287,7 @@ export interface AppData {
   bodyEntries: BodyEntry[];
   nutritionPlan: NutritionPlan;
   macroPlan: MacroPlan;
+  detailedBlocks: DetailedBlock[];
   lastUpdated: string;
   lastExportedAt?: string;
 }
