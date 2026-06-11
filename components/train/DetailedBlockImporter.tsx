@@ -109,11 +109,21 @@ function buildExerciseGroup(obj: Record<string, unknown>, exs: DetailedExercise[
  * more such groups via { type: "supersetGroup", supersetGroups: [...] }.
  */
 function parseExerciseGroups(raw: unknown): DetailedExerciseGroup[] {
-  if (!Array.isArray(raw)) return [];
+  let items: unknown[];
+  if (Array.isArray(raw)) {
+    items = raw;
+  } else if (raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>).supersetGroups)) {
+    // A lone wrapper object rather than an array of them, e.g.
+    // { type: "supersetGroup", exercises: [], supersetGroups: [...] }
+    items = [raw];
+  } else {
+    return [];
+  }
+
   const groups: DetailedExerciseGroup[] = [];
   const bySupersetKey = new Map<string, DetailedExerciseGroup>();
 
-  for (const item of raw) {
+  for (const item of items) {
     if (!item || typeof item !== "object") continue;
     const obj = item as Record<string, unknown>;
 
@@ -182,6 +192,7 @@ const SECTION_KEY_MAP: [string, string][] = [
   ["compounds", "Heavy Compounds"],
   ["unilateral", "Unilateral"],
   ["supersets", "Superset Groups"],
+  ["supersetGroup", "Superset Groups"],
   ["supersetGroups", "Superset Groups"],
   ["superset_groups", "Superset Groups"],
   ["accessories", "Accessories"],
@@ -210,6 +221,13 @@ function sectionSortIndex(name: string): number {
   return i === -1 ? SECTION_ORDER.length : i;
 }
 
+/** Maps a raw section key/type/name (e.g. "supersetGroup") to its canonical display label. */
+function sectionLabelForKey(key: unknown): string | undefined {
+  if (typeof key !== "string") return undefined;
+  const found = SECTION_KEY_MAP.find(([k]) => k.toLowerCase() === key.toLowerCase());
+  return found?.[1];
+}
+
 function parseDay(raw: unknown, index: number): DetailedBlockDay | null {
   if (!raw || typeof raw !== "object") return null;
   const d = raw as Record<string, unknown>;
@@ -224,8 +242,16 @@ function parseDay(raw: unknown, index: number): DetailedBlockDay | null {
     for (const s of d.sections) {
       if (!s || typeof s !== "object") continue;
       const so = s as Record<string, unknown>;
-      const sname = optStr(so.name ?? so.title) ?? "Section";
-      const groups = parseExerciseGroups(so.exercises ?? so.items ?? so.groups);
+      const rawName = optStr(so.name ?? so.title);
+      const sname = (rawName && sectionLabelForKey(rawName)) ?? sectionLabelForKey(so.type) ?? rawName ?? "Section";
+
+      let groups = parseExerciseGroups(so.exercises ?? so.items ?? so.groups);
+      // A "supersetGroup" section often ships an empty top-level `exercises`
+      // array, with the real groups nested one level deeper under `supersetGroups`.
+      if (groups.length === 0 && so.supersetGroups) {
+        groups = parseExerciseGroups(so.supersetGroups);
+      }
+
       if (groups.length > 0 && !seen.has(sname.toLowerCase())) {
         sections.push({ id: uid(), name: sname, groups });
         seen.add(sname.toLowerCase());
@@ -235,13 +261,10 @@ function parseDay(raw: unknown, index: number): DetailedBlockDay | null {
 
   for (const [key, label] of SECTION_KEY_MAP) {
     if (seen.has(label.toLowerCase())) continue;
-    const value = d[key];
-    if (Array.isArray(value)) {
-      const groups = parseExerciseGroups(value);
-      if (groups.length > 0) {
-        sections.push({ id: uid(), name: label, groups });
-        seen.add(label.toLowerCase());
-      }
+    const groups = parseExerciseGroups(d[key]);
+    if (groups.length > 0) {
+      sections.push({ id: uid(), name: label, groups });
+      seen.add(label.toLowerCase());
     }
   }
 
