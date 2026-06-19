@@ -442,17 +442,33 @@ function parseProgressionTables(raw: unknown): ProgressionTable[] {
 
 // ─── Top-level file parsing ────────────────────────────────────────────────────
 
+function blockInfoRecord(obj: Record<string, unknown>): Record<string, unknown> | null {
+  const info = obj.blockInfo;
+  return info && typeof info === "object" && !Array.isArray(info)
+    ? (info as Record<string, unknown>)
+    : null;
+}
+
 export function parseDetailedBlockFile(raw: unknown): DetailedBlockImportData | null {
   if (!raw || typeof raw !== "object") return null;
   const obj = raw as Record<string, unknown>;
   if (obj.type !== "detailed_block") return null;
 
-  const name = optStr(obj.name ?? obj.blockName ?? obj.title) ?? "Untitled Block";
-  const period = optStr(obj.period ?? obj.duration ?? obj.dates);
-  const focus = optStr(obj.focus ?? obj.goal);
-  const targets = parseStringArray(obj.targets ?? obj.target ?? obj.goals);
-  const weeklySchedule = parseWeeklySchedule(obj.weeklySchedule ?? obj.schedule ?? obj.masterSchedule);
-  const { beforeEverySession, dayAddOns } = parseGlobalInstructions(obj.globalInstructions ?? obj.instructions);
+  const info = blockInfoRecord(obj);
+  const name =
+    optStr(obj.name ?? obj.blockName ?? obj.title ?? info?.name ?? info?.blockName ?? info?.title) ??
+    "Untitled Block";
+  const period = optStr(obj.period ?? obj.duration ?? obj.dates ?? info?.period ?? info?.duration ?? info?.dates);
+  const focus = optStr(obj.focus ?? obj.goal ?? info?.focus ?? info?.goal);
+  const targets = parseStringArray(
+    obj.targets ?? obj.target ?? obj.goals ?? info?.targets ?? info?.target ?? info?.goals
+  );
+  const weeklySchedule = parseWeeklySchedule(
+    obj.weeklySchedule ?? obj.schedule ?? obj.masterSchedule ?? info?.weeklySchedule ?? info?.schedule
+  );
+  const { beforeEverySession, dayAddOns } = parseGlobalInstructions(
+    obj.globalInstructions ?? obj.instructions ?? info?.globalInstructions ?? info?.instructions
+  );
 
   const daysRaw = Array.isArray(obj.days) ? obj.days : [];
   const days = daysRaw.map((d, i) => parseDay(d, i)).filter((d): d is DetailedBlockDay => d !== null);

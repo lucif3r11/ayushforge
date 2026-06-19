@@ -53,6 +53,9 @@ export interface WorkoutLog {
   id: string;
   routineId?: string;
   routineName?: string;
+  /** Set when logged from a Detailed Block day on the Train tab. */
+  detailedBlockId?: string;
+  detailedBlockDayId?: string;
   date: string;
   startTime: string;
   endTime?: string;

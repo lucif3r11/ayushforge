@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   Layers,
   Trash2,
@@ -72,21 +72,39 @@ function BlockHeader({ block }: { block: DetailedBlock }) {
 // ─── Weekly schedule ────────────────────────────────────────────────────────────
 
 function WeeklySchedule({ items }: { items: WeeklyScheduleItem[] }) {
+  const [expanded, setExpanded] = useState(false);
   if (items.length === 0) return null;
   return (
-    <div className="space-y-2">
-      <SectionLabel>Weekly Schedule</SectionLabel>
-      <div className="space-y-1">
-        {items.map((it, i) => (
-          <div
-            key={i}
-            className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2"
-          >
-            <span className="text-xs font-semibold shrink-0">{it.day}</span>
-            <span className="text-xs text-muted-foreground text-right truncate">{it.label || "—"}</span>
-          </div>
-        ))}
-      </div>
+    <div className="rounded-xl border border-border overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between px-3.5 py-2.5 text-left"
+        aria-expanded={expanded}
+      >
+        <span className="text-sm font-semibold">
+          {expanded ? "Hide Weekly Schedule" : "Show Weekly Schedule"}
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-muted-foreground shrink-0 transition-transform",
+            expanded && "rotate-180"
+          )}
+        />
+      </button>
+      {expanded && (
+        <div className="border-t border-border px-3.5 py-2.5 space-y-1">
+          {items.map((it, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2"
+            >
+              <span className="text-xs font-semibold shrink-0">{it.day}</span>
+              <span className="text-xs text-muted-foreground text-right truncate">{it.label || "—"}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -406,40 +424,28 @@ function getDayAddOns(block: DetailedBlock, day: DetailedBlockDay, dayIndex: num
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function DetailedBlockView() {
+interface DetailedBlockViewProps {
+  selectedBlockId: string | null;
+  selectedDayId: string | null;
+  onSelectBlock: (blockId: string) => void;
+  onSelectDay: (dayId: string) => void;
+}
+
+export default function DetailedBlockView({
+  selectedBlockId,
+  selectedDayId,
+  onSelectBlock,
+  onSelectDay,
+}: DetailedBlockViewProps) {
   const detailedBlocks = useAppStore((s) => s.detailedBlocks);
   const deleteDetailedBlock = useAppStore((s) => s.deleteDetailedBlock);
 
-  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
-  const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
-
-  // Default to the most-recently-imported block
-  useEffect(() => {
-    if (detailedBlocks.length === 0) {
-      setSelectedBlockId(null);
-      return;
-    }
-    if (!selectedBlockId || !detailedBlocks.some((b) => b.id === selectedBlockId)) {
-      setSelectedBlockId(detailedBlocks[detailedBlocks.length - 1].id);
-    }
-  }, [detailedBlocks, selectedBlockId]);
 
   const block = useMemo(
     () => detailedBlocks.find((b) => b.id === selectedBlockId) ?? null,
     [detailedBlocks, selectedBlockId]
   );
-
-  // Default to the first day whenever the selected block changes
-  useEffect(() => {
-    if (!block) {
-      setSelectedDayId(null);
-      return;
-    }
-    if (!selectedDayId || !block.days.some((d) => d.id === selectedDayId)) {
-      setSelectedDayId(block.days[0]?.id ?? null);
-    }
-  }, [block, selectedDayId]);
 
   const dayIndex = useMemo(
     () => (block && selectedDayId ? block.days.findIndex((d) => d.id === selectedDayId) : -1),
@@ -469,10 +475,7 @@ export default function DetailedBlockView() {
                 {detailedBlocks.map((b) => (
                   <button
                     key={b.id}
-                    onClick={() => {
-                      setSelectedBlockId(b.id);
-                      setSelectedDayId(null);
-                    }}
+                    onClick={() => onSelectBlock(b.id)}
                     className={cn(
                       "flex-shrink-0 px-3 py-2 rounded-lg border text-xs font-medium transition-all max-w-[180px] truncate",
                       b.id === selectedBlockId
@@ -499,7 +502,7 @@ export default function DetailedBlockView() {
                     {block.days.map((d) => (
                       <button
                         key={d.id}
-                        onClick={() => setSelectedDayId(d.id)}
+                        onClick={() => onSelectDay(d.id)}
                         className={cn(
                           "flex-shrink-0 px-3 py-2 rounded-lg border text-xs font-medium transition-all",
                           d.id === selectedDayId
