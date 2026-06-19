@@ -201,6 +201,8 @@ export interface MacroPlan {
 export interface DetailedExercise {
   id: string;
   name: string;
+  /** Combined sets/reps string as authored in JSON, e.g. "4 × 8-10". */
+  setsReps?: string;
   sets?: string;
   reps?: string;
   load?: string;

@@ -131,6 +131,13 @@ function DayAddOns({ items }: { items: string[] }) {
 
 // ─── Exercise row ────────────────────────────────────────────────────────────────
 
+function exerciseSetsRepsLabel(ex: DetailedExercise): string | undefined {
+  const combined = ex.setsReps?.trim();
+  if (combined) return combined;
+  const built = [ex.sets, ex.reps].filter(Boolean).join(" × ");
+  return built || undefined;
+}
+
 function NoteBlock({ children, indent }: { children: React.ReactNode; indent?: boolean }) {
   return (
     <div className={cn("flex gap-2 mt-1", indent && "pl-6")}>
@@ -141,7 +148,7 @@ function NoteBlock({ children, indent }: { children: React.ReactNode; indent?: b
 }
 
 function ExerciseRow({ ex, indexLabel }: { ex: DetailedExercise; indexLabel?: string }) {
-  const setsReps = [ex.sets, ex.reps].filter(Boolean).join(" × ");
+  const setsReps = exerciseSetsRepsLabel(ex);
   const metaLine = [
     ex.tempo ? `Tempo ${ex.tempo}` : null,
     ex.rpe ? `RPE ${ex.rpe}` : null,
@@ -163,7 +170,7 @@ function ExerciseRow({ ex, indexLabel }: { ex: DetailedExercise; indexLabel?: st
           <p className="text-sm font-medium leading-snug">{ex.name}</p>
         </div>
         {setsReps && (
-          <span className="text-sm font-semibold tabular-nums text-foreground whitespace-nowrap shrink-0">
+          <span className="shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-bold font-mono tabular-nums text-foreground/90">
             {setsReps}
           </span>
         )}

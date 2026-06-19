@@ -61,6 +61,7 @@ function parseExercise(raw: unknown): DetailedExercise | null {
   return {
     id: uid(),
     name,
+    setsReps: optStr(e.setsReps ?? e.sets_reps ?? e.setsAndReps ?? e.sets_and_reps),
     sets: optStr(e.sets ?? e.targetSets),
     reps: optStr(e.reps ?? e.targetReps),
     load: optStr(e.load ?? e.weight ?? e.targetWeight ?? e.intensity ?? e.percent1RM ?? e["%1RM"]),
