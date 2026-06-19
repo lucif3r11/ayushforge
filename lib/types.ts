@@ -31,8 +31,8 @@ export interface SetLog {
   id: string;
   setNumber: number;
   type: SetType;
-  /** Free-form weight/load, e.g. "80", "BW", "BW + 10kg", "Assisted". */
-  weight: string;
+  /** Free-form weight/load, e.g. "80", "BW", "BW + 10kg", "Assisted". Empty for pure bodyweight. */
+  weight?: string;
   reps: number;
   rpe?: number;
   notes?: string;
@@ -229,7 +229,11 @@ export interface DetailedExerciseGroup {
 export interface DetailedBlockSection {
   id: string;
   name: string;
+  /** Raw section type from JSON, e.g. "supersetGroup", "heavyCompounds". */
+  type?: string;
   groups: DetailedExerciseGroup[];
+  /** Populated when type is "supersetGroup" — exercises live here, not in root `groups`. */
+  supersetGroups?: DetailedExerciseGroup[];
 }
 
 export interface DetailedBlockDay {

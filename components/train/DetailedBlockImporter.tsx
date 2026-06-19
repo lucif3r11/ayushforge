@@ -78,6 +78,40 @@ function nestedExercisesArray(obj: Record<string, unknown>): unknown[] | null {
   if (Array.isArray(obj.exercises)) return obj.exercises;
   if (Array.isArray(obj.pair)) return obj.pair;
   if (Array.isArray(obj.items)) return obj.items;
+  if (Array.isArray(obj.movements)) return obj.movements;
+  return null;
+}
+
+const SUPERSET_SECTION_KEYS = new Set([
+  "supersets",
+  "supersetgroup",
+  "supersetgroups",
+  "superset_groups",
+]);
+
+function isSupersetSectionSource(so: Record<string, unknown>): boolean {
+  const typeKey = optStr(so.type)?.toLowerCase();
+  const nameKey = optStr(so.name ?? so.title)?.toLowerCase();
+  if (typeKey && SUPERSET_SECTION_KEYS.has(typeKey)) return true;
+  if (nameKey && SUPERSET_SECTION_KEYS.has(nameKey.replace(/\s+/g, ""))) return true;
+  if (nameKey === "superset groups") return true;
+  return (
+    Array.isArray(so.supersetGroups) &&
+    so.supersetGroups.length > 0 &&
+    (!Array.isArray(so.exercises) || so.exercises.length === 0)
+  );
+}
+
+/** Normalises a section/group payload into a flat list of items for `parseExerciseGroups`. */
+function asItemList(raw: unknown): unknown[] | null {
+  if (Array.isArray(raw)) return raw;
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  if (Array.isArray(obj.supersetGroups)) return [raw];
+  const values = Object.values(obj).filter((v) => v && typeof v === "object");
+  if (values.some((v) => nestedExercisesArray(v as Record<string, unknown>) !== null)) {
+    return values;
+  }
   return null;
 }
 
@@ -109,16 +143,8 @@ function buildExerciseGroup(obj: Record<string, unknown>, exs: DetailedExercise[
  * more such groups via { type: "supersetGroup", supersetGroups: [...] }.
  */
 function parseExerciseGroups(raw: unknown): DetailedExerciseGroup[] {
-  let items: unknown[];
-  if (Array.isArray(raw)) {
-    items = raw;
-  } else if (raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>).supersetGroups)) {
-    // A lone wrapper object rather than an array of them, e.g.
-    // { type: "supersetGroup", exercises: [], supersetGroups: [...] }
-    items = [raw];
-  } else {
-    return [];
-  }
+  const items = asItemList(raw);
+  if (!items) return [];
 
   const groups: DetailedExerciseGroup[] = [];
   const bySupersetKey = new Map<string, DetailedExerciseGroup>();
@@ -228,6 +254,40 @@ function sectionLabelForKey(key: unknown): string | undefined {
   return found?.[1];
 }
 
+function sectionExerciseCount(section: DetailedBlockSection): number {
+  const groups = section.supersetGroups?.length ? section.supersetGroups : section.groups;
+  return groups.reduce((n, g) => n + g.exercises.length, 0);
+}
+
+function parseSection(so: Record<string, unknown>): DetailedBlockSection | null {
+  const rawName = optStr(so.name ?? so.title);
+  const sname = (rawName && sectionLabelForKey(rawName)) ?? sectionLabelForKey(so.type) ?? rawName ?? "Section";
+  const sectionType = optStr(so.type);
+
+  if (isSupersetSectionSource(so)) {
+    let supersetGroups = parseExerciseGroups(so.supersetGroups);
+    if (supersetGroups.length === 0) {
+      supersetGroups = parseExerciseGroups(so);
+    }
+    if (supersetGroups.length === 0) return null;
+    return {
+      id: uid(),
+      name: sname,
+      type: sectionType ?? "supersetGroup",
+      groups: [],
+      supersetGroups,
+    };
+  }
+
+  let groups = parseExerciseGroups(so.exercises ?? so.items ?? so.groups);
+  if (groups.length === 0 && so.supersetGroups) {
+    groups = parseExerciseGroups(so.supersetGroups);
+  }
+  if (groups.length === 0) return null;
+
+  return { id: uid(), name: sname, type: sectionType, groups };
+}
+
 function parseDay(raw: unknown, index: number): DetailedBlockDay | null {
   if (!raw || typeof raw !== "object") return null;
   const d = raw as Record<string, unknown>;
@@ -241,29 +301,40 @@ function parseDay(raw: unknown, index: number): DetailedBlockDay | null {
   if (Array.isArray(d.sections)) {
     for (const s of d.sections) {
       if (!s || typeof s !== "object") continue;
-      const so = s as Record<string, unknown>;
-      const rawName = optStr(so.name ?? so.title);
-      const sname = (rawName && sectionLabelForKey(rawName)) ?? sectionLabelForKey(so.type) ?? rawName ?? "Section";
-
-      let groups = parseExerciseGroups(so.exercises ?? so.items ?? so.groups);
-      // A "supersetGroup" section often ships an empty top-level `exercises`
-      // array, with the real groups nested one level deeper under `supersetGroups`.
-      if (groups.length === 0 && so.supersetGroups) {
-        groups = parseExerciseGroups(so.supersetGroups);
-      }
-
-      if (groups.length > 0 && !seen.has(sname.toLowerCase())) {
-        sections.push({ id: uid(), name: sname, groups });
-        seen.add(sname.toLowerCase());
+      const section = parseSection(s as Record<string, unknown>);
+      if (section && !seen.has(section.name.toLowerCase())) {
+        sections.push(section);
+        seen.add(section.name.toLowerCase());
       }
     }
   }
 
   for (const [key, label] of SECTION_KEY_MAP) {
     if (seen.has(label.toLowerCase())) continue;
-    const groups = parseExerciseGroups(d[key]);
+    const raw = d[key];
+    if (!raw) continue;
+
+    if (SUPERSET_SECTION_KEYS.has(key.toLowerCase())) {
+      let supersetGroups = parseExerciseGroups(raw);
+      if (supersetGroups.length === 0 && raw && typeof raw === "object" && !Array.isArray(raw)) {
+        supersetGroups = parseExerciseGroups((raw as Record<string, unknown>).supersetGroups);
+      }
+      if (supersetGroups.length > 0) {
+        sections.push({
+          id: uid(),
+          name: label,
+          type: "supersetGroup",
+          groups: [],
+          supersetGroups,
+        });
+        seen.add(label.toLowerCase());
+      }
+      continue;
+    }
+
+    const groups = parseExerciseGroups(raw);
     if (groups.length > 0) {
-      sections.push({ id: uid(), name: label, groups });
+      sections.push({ id: uid(), name: label, type: key, groups });
       seen.add(label.toLowerCase());
     }
   }
@@ -437,17 +508,14 @@ export function describeDetailedBlockIssue(raw: unknown): { title: string; descr
 // ─── Totals helper ────────────────────────────────────────────────────────────
 
 function countExercises(days: DetailedBlockDay[]): number {
-  return days.reduce(
-    (acc, d) => acc + d.sections.reduce((a, s) => a + s.groups.reduce((b, g) => b + g.exercises.length, 0), 0),
-    0
-  );
+  return days.reduce((acc, d) => acc + d.sections.reduce((a, s) => a + sectionExerciseCount(s), 0), 0);
 }
 
 // ─── Preview card ─────────────────────────────────────────────────────────────
 
 function DayPreview({ day }: { day: DetailedBlockDay }) {
   const [expanded, setExpanded] = useState(false);
-  const exCount = day.sections.reduce((a, s) => a + s.groups.reduce((b, g) => b + g.exercises.length, 0), 0);
+  const exCount = day.sections.reduce((a, s) => a + sectionExerciseCount(s), 0);
 
   return (
     <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-3 space-y-2">
@@ -483,8 +551,8 @@ function DayPreview({ day }: { day: DetailedBlockDay }) {
               <span className="font-medium text-foreground">{s.name}</span>
               <span className="text-muted-foreground">
                 {" — "}
-                {s.groups.reduce((a, g) => a + g.exercises.length, 0)} exercise
-                {s.groups.reduce((a, g) => a + g.exercises.length, 0) !== 1 ? "s" : ""}
+                {sectionExerciseCount(s)} exercise
+                {sectionExerciseCount(s) !== 1 ? "s" : ""}
               </span>
             </div>
           ))}

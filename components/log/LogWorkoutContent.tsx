@@ -29,8 +29,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { cn, isBodyweightExercise, weightToInputString } from "@/lib/utils";
-import type { SetType, Routine, WorkoutLog } from "@/lib/types";
+import { cn, isBodyweightExercise, weightToInputString, defaultExerciseWeight, detailedBlockLoadHints } from "@/lib/utils";
+import type { SetType, Routine, WorkoutLog, RoutineExercise, DetailedBlock } from "@/lib/types";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
@@ -70,8 +70,56 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function emptySet(): SetRow {
-  return { localId: uid(), weight: "", reps: "", rpe: "", notes: "", done: false };
+function emptySet(defaultWeight = ""): SetRow {
+  return { localId: uid(), weight: defaultWeight, reps: "", rpe: "", notes: "", done: false };
+}
+
+function routineExerciseFor(
+  exerciseId: string,
+  blockRoutines: Routine[]
+): RoutineExercise | undefined {
+  for (const r of blockRoutines) {
+    const found = r.exercises.find((e) => e.exerciseId === exerciseId);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function weightHintsForExercise(
+  exerciseName: string,
+  category: string | undefined,
+  routineEx: RoutineExercise | undefined,
+  detailedBlocks: DetailedBlock[]
+): string {
+  const blockHints = detailedBlockLoadHints(exerciseName, detailedBlocks);
+  return defaultExerciseWeight(
+    exerciseName,
+    category,
+    routineEx?.notes,
+    routineEx?.progressionScheme,
+    routineEx?.targetWeight != null ? String(routineEx.targetWeight) : undefined,
+    ...blockHints
+  );
+}
+
+function isBwExercise(
+  exerciseName: string,
+  category: string | undefined,
+  routineEx: RoutineExercise | undefined,
+  detailedBlocks: DetailedBlock[]
+): boolean {
+  const blockHints = detailedBlockLoadHints(exerciseName, detailedBlocks);
+  return (
+    isBodyweightExercise(exerciseName, category) ||
+    defaultExerciseWeight(
+      exerciseName,
+      category,
+      routineEx?.notes,
+      routineEx?.progressionScheme,
+      routineEx?.targetWeight != null ? String(routineEx.targetWeight) : undefined,
+      ...blockHints
+    ) === "BW"
+  );
 }
 
 function emptyExercise(id: string, name: string, prefillSets = 1): ExerciseEntry {
@@ -675,6 +723,7 @@ export default function LogWorkoutContent() {
   const routines = useAppStore((s) => s.routines);
   const allExercises = useAppStore((s) => s.exercises);
   const workoutLogs = useAppStore((s) => s.workoutLogs);
+  const detailedBlocks = useAppStore((s) => s.detailedBlocks);
   const addWorkoutLog = useAppStore((s) => s.addWorkoutLog);
 
   // Capture start time once on mount
@@ -732,19 +781,27 @@ export default function LogWorkoutContent() {
 
   const addExercise = useCallback((ex: PickerExercise) => {
     const prefill = getPrefilledSets(ex.exerciseId, workoutLogs);
+    const routineEx = routineExerciseFor(ex.exerciseId, blockRoutines);
+    const exRecord = allExercises.find((e) => e.id === ex.exerciseId);
+    const defaultWeight = weightHintsForExercise(
+      ex.exerciseName,
+      exRecord?.category,
+      routineEx,
+      detailedBlocks
+    );
     setExercises((prev) => [
       ...prev,
       {
         localId: uid(),
         exerciseId: ex.exerciseId,
         exerciseName: ex.exerciseName,
-        sets: prefill ? prefill.sets : [emptySet()],
+        sets: prefill ? prefill.sets : [emptySet(defaultWeight)],
         prefilledFromDate: prefill?.fromDate,
         skipped: false,
       },
     ]);
     setPickerOpen(false);
-  }, [workoutLogs]);
+  }, [workoutLogs, blockRoutines, allExercises, detailedBlocks]);
 
   const removeExercise = useCallback((localId: string) => {
     setExercises((prev) => prev.filter((e) => e.localId !== localId));
@@ -773,13 +830,22 @@ export default function LogWorkoutContent() {
 
   const addSet = useCallback((exerciseLocalId: string) => {
     setExercises((prev) =>
-      prev.map((e) =>
-        e.localId === exerciseLocalId
-          ? { ...e, sets: [...e.sets, emptySet()] }
-          : e
-      )
+      prev.map((e) => {
+        if (e.localId !== exerciseLocalId) return e;
+        const routineEx = routineExerciseFor(e.exerciseId, blockRoutines);
+        const exRecord = allExercises.find((x) => x.id === e.exerciseId);
+        const last = e.sets[e.sets.length - 1];
+        const fallbackWeight = weightHintsForExercise(
+          e.exerciseName,
+          exRecord?.category,
+          routineEx,
+          detailedBlocks
+        );
+        const nextWeight = last?.weight?.trim() ? last.weight : fallbackWeight;
+        return { ...e, sets: [...e.sets, emptySet(nextWeight)] };
+      })
     );
-  }, []);
+  }, [blockRoutines, allExercises, detailedBlocks]);
 
   const removeSet = useCallback((exerciseLocalId: string, setLocalId: string) => {
     setExercises((prev) =>
@@ -849,6 +915,13 @@ export default function LogWorkoutContent() {
               skipped: false,
             };
           }
+          const exRecord = allExercises.find((e) => e.id === re.exerciseId);
+          const defaultWeight = weightHintsForExercise(
+            re.exerciseName,
+            exRecord?.category,
+            re,
+            detailedBlocks
+          );
           const parsedReps = parseInt(re.targetReps);
           return {
             localId: uid(),
@@ -856,7 +929,7 @@ export default function LogWorkoutContent() {
             exerciseName: re.exerciseName,
             sets: Array.from({ length: re.targetSets }, () => ({
               localId: uid(),
-              weight: re.targetWeight ? String(re.targetWeight) : "",
+              weight: defaultWeight,
               reps: !isNaN(parsedReps) ? String(parsedReps) : "",
               rpe: "",
               notes: "",
@@ -867,7 +940,7 @@ export default function LogWorkoutContent() {
         });
       setExercises(entries);
     },
-    [workoutLogs]
+    [workoutLogs, allExercises, detailedBlocks]
   );
 
   // ── Save ────────────────────────────────────────────────────────────────
@@ -913,7 +986,7 @@ export default function LogWorkoutContent() {
             id: uid(),
             setNumber: i + 1,
             type: "normal" as SetType,
-            weight: s.weight.trim(),
+            weight: (s.weight ?? "").trim(),
             reps: parseInt(s.reps) || 0,
             rpe: s.rpe ? parseFloat(s.rpe) : undefined,
             notes: s.notes.trim() || undefined,
@@ -1080,7 +1153,13 @@ export default function LogWorkoutContent() {
             {/* Cards */}
             {exercises.map((entry) => {
               const exRecord = allExercises.find((e) => e.id === entry.exerciseId);
-              const bw = isBodyweightExercise(entry.exerciseName, exRecord?.category);
+              const routineEx = routineExerciseFor(entry.exerciseId, blockRoutines);
+              const bw = isBwExercise(
+                entry.exerciseName,
+                exRecord?.category,
+                routineEx,
+                detailedBlocks
+              );
               return (
                 <ExerciseCard
                   key={entry.localId}

@@ -17,6 +17,7 @@ import type {
   WorkoutImportBlock,
   ConflictStrategy,
 } from "./types";
+import { weightToInputString } from "./utils";
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -112,6 +113,19 @@ const initialState: AppData = {
   detailedBlocks: [],
   lastUpdated: new Date().toISOString(),
 };
+
+function migrateWorkoutLogs(logs: WorkoutLog[]): WorkoutLog[] {
+  return logs.map((log) => ({
+    ...log,
+    exercises: log.exercises.map((ex) => ({
+      ...ex,
+      sets: ex.sets.map((s) => ({
+        ...s,
+        weight: weightToInputString(s.weight as string | number | undefined),
+      })),
+    })),
+  }));
+}
 
 export const useAppStore = create<AppStore>()(
   persist(
@@ -420,6 +434,14 @@ export const useAppStore = create<AppStore>()(
     {
       name: "ironclad-data",
       storage: createJSONStorage(() => localStorage),
+      version: 1,
+      migrate: (persisted, _version) => {
+        const state = persisted as AppData;
+        if (state.workoutLogs?.length) {
+          state.workoutLogs = migrateWorkoutLogs(state.workoutLogs);
+        }
+        return state as AppStore;
+      },
     }
   )
 );

@@ -131,53 +131,69 @@ function DayAddOns({ items }: { items: string[] }) {
 
 // ─── Exercise row ────────────────────────────────────────────────────────────────
 
+function NoteBlock({ children, indent }: { children: React.ReactNode; indent?: boolean }) {
+  return (
+    <div className={cn("flex gap-2 mt-1", indent && "pl-6")}>
+      <div className="w-px bg-border/70 shrink-0 self-stretch min-h-[1em]" aria-hidden />
+      <div className="min-w-0 text-xs text-muted-foreground leading-snug">{children}</div>
+    </div>
+  );
+}
+
 function ExerciseRow({ ex, indexLabel }: { ex: DetailedExercise; indexLabel?: string }) {
   const setsReps = [ex.sets, ex.reps].filter(Boolean).join(" × ");
+  const metaLine = [
+    ex.tempo ? `Tempo ${ex.tempo}` : null,
+    ex.rpe ? `RPE ${ex.rpe}` : null,
+    ex.load ? `Load ${ex.load}` : null,
+    ex.loadProgression ? `↗ ${ex.loadProgression}` : null,
+  ]
+    .filter(Boolean)
+    .join("  ·  ");
+
   return (
-    <div className="space-y-1">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-2 min-w-0">
+    <div className="space-y-0.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-baseline gap-2 min-w-0">
           {indexLabel && (
-            <span className="flex items-center justify-center h-4 w-4 rounded-full bg-primary/15 text-[10px] font-bold text-primary shrink-0 mt-0.5">
+            <span className="flex items-center justify-center h-4 w-4 rounded-full bg-primary/15 text-[10px] font-bold text-primary shrink-0">
               {indexLabel}
             </span>
           )}
           <p className="text-sm font-medium leading-snug">{ex.name}</p>
         </div>
-        <div className="flex flex-col items-end shrink-0 ml-2 text-xs text-muted-foreground gap-0.5">
-          {setsReps && <span className="font-semibold text-foreground whitespace-nowrap">{setsReps}</span>}
-          {ex.load && <span className="whitespace-nowrap">{ex.load}</span>}
-          {ex.rpe && <span className="whitespace-nowrap">RPE {ex.rpe}</span>}
-        </div>
+        {setsReps && (
+          <span className="text-sm font-semibold tabular-nums text-foreground whitespace-nowrap shrink-0">
+            {setsReps}
+          </span>
+        )}
       </div>
 
-      {(ex.tempo || ex.rest) && (
-        <p className={cn("text-xs text-muted-foreground leading-snug", indexLabel && "pl-6")}>
-          {ex.tempo && `Tempo ${ex.tempo}`}
-          {ex.tempo && ex.rest && " · "}
-          {ex.rest && `Rest ${ex.rest}`}
+      {metaLine && (
+        <p className={cn("text-[10px] font-mono text-muted-foreground leading-snug", indexLabel && "pl-6")}>
+          {metaLine}
         </p>
       )}
 
-      {ex.notes && (
-        <p className={cn("text-xs text-muted-foreground leading-snug", indexLabel && "pl-6")}>{ex.notes}</p>
+      {ex.rest && (
+        <p className={cn("text-[10px] font-mono text-muted-foreground/80 leading-snug", indexLabel && "pl-6")}>
+          Rest {ex.rest}
+        </p>
       )}
+
+      {ex.notes && <NoteBlock indent={!!indexLabel}>{ex.notes}</NoteBlock>}
 
       {ex.formCues && ex.formCues.length > 0 && (
-        <ul className={cn("space-y-0.5", indexLabel && "pl-6")}>
-          {ex.formCues.map((c, i) => (
-            <li key={i} className="text-[11px] text-muted-foreground/80 leading-snug flex gap-1">
-              <span className="text-muted-foreground/40 shrink-0">•</span>
-              {c}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {ex.loadProgression && (
-        <p className={cn("text-[11px] text-primary/70 leading-snug", indexLabel && "pl-6")}>
-          ↗ {ex.loadProgression}
-        </p>
+        <NoteBlock indent={!!indexLabel}>
+          <ul className="space-y-0.5">
+            {ex.formCues.map((c, i) => (
+              <li key={i} className="flex gap-1.5">
+                <span className="text-muted-foreground/50 shrink-0">•</span>
+                {c}
+              </li>
+            ))}
+          </ul>
+        </NoteBlock>
       )}
     </div>
   );
@@ -185,43 +201,53 @@ function ExerciseRow({ ex, indexLabel }: { ex: DetailedExercise; indexLabel?: st
 
 // ─── Exercise group (single or superset) ───────────────────────────────────────
 
-function GroupBlock({ group }: { group: DetailedExerciseGroup }) {
-  if (group.isSuperset) {
+function supersetGroupTitle(group: DetailedExerciseGroup): string {
+  if (group.groupName) return group.groupName;
+  if (group.label) return `SUPERSET ${group.label}`;
+  return "SUPERSET";
+}
+
+function GroupBlock({
+  group,
+  forceSuperset = false,
+}: {
+  group: DetailedExerciseGroup;
+  forceSuperset?: boolean;
+}) {
+  const showAsSuperset = forceSuperset || group.isSuperset;
+
+  if (showAsSuperset) {
     return (
-      <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 pt-2.5 pb-3 space-y-3">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] font-bold tracking-[0.12em] uppercase text-primary/70 shrink-0">
-            {group.label ? `Superset ${group.label}` : "Superset"}
+      <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2.5 space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] font-bold tracking-[0.1em] uppercase text-primary/80 shrink-0">
+            {supersetGroupTitle(group)}
           </span>
-          {group.groupName && (
-            <span className="text-[11px] font-semibold text-foreground/80 truncate">
-              {group.groupName}
-            </span>
-          )}
           <div className="flex-1 h-px bg-primary/15 min-w-2" />
           {group.rounds && (
-            <Badge variant="secondary" className="text-[9px] h-4 px-1.5 shrink-0">
+            <Badge variant="secondary" className="text-[9px] h-4 px-1.5 shrink-0 font-mono">
               {group.rounds} round{group.rounds === "1" ? "" : "s"}
             </Badge>
           )}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
+        <div className="space-y-2.5">
           {group.exercises.map((ex, j) => (
-            <div key={ex.id} className="rounded-md border border-primary/15 bg-background/60 p-2">
-              <ExerciseRow ex={ex} indexLabel={String.fromCharCode(65 + j)} />
-            </div>
+            <ExerciseRow key={ex.id} ex={ex} indexLabel={String.fromCharCode(65 + j)} />
           ))}
         </div>
+
         {group.restAfterPair && (
-          <p className="text-[11px] text-primary/70 leading-snug pt-1 border-t border-primary/10">
+          <p className="text-[10px] font-mono text-primary/70 leading-snug pt-1 border-t border-primary/10">
             Rest after round: {group.restAfterPair}
           </p>
         )}
       </div>
     );
   }
+
   return (
-    <div className="py-1">
+    <div className="py-0.5">
       <ExerciseRow ex={group.exercises[0]} />
     </div>
   );
@@ -229,13 +255,32 @@ function GroupBlock({ group }: { group: DetailedExerciseGroup }) {
 
 // ─── Section block ──────────────────────────────────────────────────────────────
 
+function isSupersetSection(section: DetailedBlockSection): boolean {
+  const t = section.type?.toLowerCase();
+  if (t && (t === "supersetgroup" || t === "supersetgroups" || t === "supersets")) return true;
+  return !!(section.supersetGroups && section.supersetGroups.length > 0);
+}
+
+function sectionGroups(section: DetailedBlockSection): DetailedExerciseGroup[] {
+  if (isSupersetSection(section) && section.supersetGroups && section.supersetGroups.length > 0) {
+    return section.supersetGroups;
+  }
+  // Backward compatibility: older imports stored superset data in `groups`
+  return section.groups;
+}
+
 function SectionBlock({ section }: { section: DetailedBlockSection }) {
+  const groups = sectionGroups(section);
+  const supersetSection = isSupersetSection(section);
+
+  if (groups.length === 0) return null;
+
   return (
     <div className="space-y-2">
       <SectionLabel>{section.name}</SectionLabel>
       <div className="space-y-2">
-        {section.groups.map((g) => (
-          <GroupBlock key={g.id} group={g} />
+        {groups.map((g) => (
+          <GroupBlock key={g.id} group={g} forceSuperset={supersetSection} />
         ))}
       </div>
     </div>

@@ -1,20 +1,75 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { DetailedBlock } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 const BODYWEIGHT_KEYWORDS = [
-  "bodyweight", " bw ", "mobility", "warm-up", "warmup", "prehab",
-  "nordic", "plank", "dead bug", "stretch", "yoga", "foam roll",
-  "activation", "breathing", "meditation", "hip circle", "band pull",
+  "bodyweight", " bw", "bw ", "calisthenics",
+  "pull-up", "pull up", "pullup", "chin-up", "chin up", "chinup",
+  "dip", "push-up", "push up", "pushup",
+  "plank", "hollow", "l-sit", "lsit", "leg raise", "hanging",
+  "burpee", "inverted row", "muscle-up", "muscle up",
+  "sit-up", "sit up", "situp", "crunch", "v-up",
+  "mountain climber", "dead bug", "bird dog",
+  "mobility", "warm-up", "warmup", "prehab", "nordic",
+  "stretch", "yoga", "foam roll", "activation", "breathing",
+  "meditation", "hip circle", "band pull",
 ];
 
+const BW_TEXT_RE = /\b(bodyweight|bw)\b/i;
+
 export function isBodyweightExercise(name: string, category?: string): boolean {
-  if (category === "mobility") return true;
+  if (category === "mobility" || category === "cardio") return true;
   const lower = name.toLowerCase();
   return BODYWEIGHT_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+/** True when any load/notes/progression text explicitly mentions bodyweight or BW. */
+export function textSuggestsBodyweight(...parts: (string | undefined | null)[]): boolean {
+  return parts.some((p) => !!p && BW_TEXT_RE.test(p));
+}
+
+/** Collects load-related hint strings from detailed-block exercises matching `name`. */
+export function detailedBlockLoadHints(name: string, blocks: DetailedBlock[]): string[] {
+  const hints: string[] = [];
+  const target = name.trim().toLowerCase();
+  if (!target) return hints;
+  for (const block of blocks) {
+    for (const day of block.days) {
+      for (const section of day.sections) {
+        const groups = [...section.groups, ...(section.supersetGroups ?? [])];
+        for (const group of groups) {
+          for (const ex of group.exercises) {
+            if (ex.name.trim().toLowerCase() === target) {
+              if (ex.load) hints.push(ex.load);
+              if (ex.loadProgression) hints.push(ex.loadProgression);
+              if (ex.notes) hints.push(ex.notes);
+            }
+          }
+        }
+      }
+    }
+  }
+  return hints;
+}
+
+/** Default weight string for a new set — "BW" for bodyweight moves, else "" or a numeric hint. */
+export function defaultExerciseWeight(
+  name: string,
+  category?: string,
+  ...loadHints: (string | undefined | null)[]
+): string {
+  if (isBodyweightExercise(name, category) || textSuggestsBodyweight(...loadHints)) {
+    return "BW";
+  }
+  for (const hint of loadHints) {
+    const trimmed = (hint ?? "").trim();
+    if (/^\d+(\.\d+)?$/.test(trimmed)) return trimmed;
+  }
+  return "";
 }
 
 // ─── Alphanumeric weight helpers ──────────────────────────────────────────────

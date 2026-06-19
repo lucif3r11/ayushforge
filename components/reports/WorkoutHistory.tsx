@@ -21,8 +21,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { cn, isBodyweightExercise, weightToInputString, parseWeightKg, formatWeightDisplay } from "@/lib/utils";
-import type { WorkoutLog, SetType } from "@/lib/types";
+import { cn, weightToInputString, parseWeightKg, formatWeightDisplay, defaultExerciseWeight, detailedBlockLoadHints } from "@/lib/utils";
+import type { WorkoutLog, SetType, DetailedBlock } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -104,7 +104,7 @@ function applyEdit(original: WorkoutLog, editable: EditWorkout): Omit<WorkoutLog
         id: s.id,
         setNumber: i + 1,
         type: s.type,
-        weight: s.weight.trim(),
+        weight: (s.weight ?? "").trim(),
         reps: parseInt(s.reps) || 0,
         rpe: s.rpe ? parseFloat(s.rpe) : undefined,
         notes: s.notes.trim() || undefined,
@@ -115,6 +115,17 @@ function applyEdit(original: WorkoutLog, editable: EditWorkout): Omit<WorkoutLog
 
 // ─── Single workout item ──────────────────────────────────────────────────────
 
+function exerciseUsesBodyweight(
+  exerciseName: string,
+  exerciseNotes: string | undefined,
+  detailedBlocks: DetailedBlock[]
+): boolean {
+  const blockHints = detailedBlockLoadHints(exerciseName, detailedBlocks);
+  return (
+    defaultExerciseWeight(exerciseName, undefined, exerciseNotes, ...blockHints) === "BW"
+  );
+}
+
 function WorkoutItem({
   log,
   onUpdate,
@@ -124,6 +135,7 @@ function WorkoutItem({
   onUpdate: (updates: Omit<WorkoutLog, "id">) => void;
   onDelete: () => void;
 }) {
+  const detailedBlocks = useAppStore((s) => s.detailedBlocks);
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -376,7 +388,7 @@ function WorkoutItem({
 
               {/* Per-exercise blocks */}
               {draft.exercises.map((ex, exIdx) => {
-                const bw = isBodyweightExercise(ex.exerciseName);
+                const bw = exerciseUsesBodyweight(ex.exerciseName, ex.notes, detailedBlocks);
                 return (
                   <div key={ex.id} className="space-y-2 rounded-xl border border-border/60 p-3">
                     {/* Exercise header */}
@@ -513,7 +525,7 @@ function WorkoutItem({
               )}
 
               {log.exercises.map((ex) => {
-                const bw = isBodyweightExercise(ex.exerciseName);
+                const bw = exerciseUsesBodyweight(ex.exerciseName, ex.notes, detailedBlocks);
                 return (
                   <div key={ex.id}>
                     <div className="flex items-center gap-2 mb-1.5">
