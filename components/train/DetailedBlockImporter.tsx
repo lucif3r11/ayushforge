@@ -231,21 +231,19 @@ const SECTION_KEY_MAP: [string, string][] = [
   ["cool_down", "Cool-down"],
 ];
 
-const SECTION_ORDER = [
-  "Warm-up",
-  "Heavy Compounds",
-  "Unilateral",
-  "Superset Groups",
-  "Accessories",
-  "Core",
-  "Hyrox Finisher",
-  "Cool-down",
-];
-
-function sectionSortIndex(name: string): number {
-  const i = SECTION_ORDER.indexOf(name);
-  return i === -1 ? SECTION_ORDER.length : i;
-}
+const DAY_META_KEYS = new Set([
+  "name",
+  "label",
+  "day",
+  "title",
+  "focus",
+  "estimatedtime",
+  "liftingtime",
+  "lifting_time",
+  "duration",
+  "time",
+  "sections",
+]);
 
 /** Maps a raw section key/type/name (e.g. "supersetGroup") to its canonical display label. */
 function sectionLabelForKey(key: unknown): string | undefined {
@@ -261,7 +259,8 @@ function sectionExerciseCount(section: DetailedBlockSection): number {
 
 function parseSection(so: Record<string, unknown>): DetailedBlockSection | null {
   const rawName = optStr(so.name ?? so.title);
-  const sname = (rawName && sectionLabelForKey(rawName)) ?? sectionLabelForKey(so.type) ?? rawName ?? "Section";
+  const sname =
+    sectionLabelForKey(rawName) ?? rawName ?? sectionLabelForKey(so.type) ?? "Section";
   const sectionType = optStr(so.type);
 
   if (isSupersetSectionSource(so)) {
@@ -309,8 +308,11 @@ function parseDay(raw: unknown, index: number): DetailedBlockDay | null {
     }
   }
 
-  for (const [key, label] of SECTION_KEY_MAP) {
-    if (seen.has(label.toLowerCase())) continue;
+  // Named day-level keys (e.g. heavyCompounds, supersetGroups) — preserve JSON key order.
+  for (const key of Object.keys(d)) {
+    if (DAY_META_KEYS.has(key.toLowerCase())) continue;
+    const label = sectionLabelForKey(key);
+    if (!label || seen.has(label.toLowerCase())) continue;
     const raw = d[key];
     if (!raw) continue;
 
@@ -338,8 +340,6 @@ function parseDay(raw: unknown, index: number): DetailedBlockDay | null {
       seen.add(label.toLowerCase());
     }
   }
-
-  sections.sort((a, b) => sectionSortIndex(a.name) - sectionSortIndex(b.name));
 
   if (sections.length === 0) return null;
   return { id: uid(), name, label, estimatedTime, sections };
