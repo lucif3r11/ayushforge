@@ -410,7 +410,7 @@ function SetRowComponent({
         className={cn(
           "h-6 w-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-150 border-2",
           set.done
-            ? "bg-green-500 border-green-500 text-white"
+            ? "bg-accent border-accent text-accent-foreground"
             : "border-muted-foreground/30 text-transparent hover:border-primary/60"
         )}
         aria-label={set.done ? "Mark set incomplete" : "Mark set complete"}

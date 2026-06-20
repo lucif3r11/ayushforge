@@ -93,7 +93,7 @@ function SetRowInput({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs font-semibold w-5 text-center shrink-0 tabular-nums text-muted-foreground">
+      <span className="text-xs font-semibold w-5 text-center shrink-0 font-data tabular-nums text-muted-foreground">
         {index + 1}
       </span>
       <Input
@@ -102,7 +102,7 @@ function SetRowInput({
         placeholder={isBodyweight ? "BW" : "kg"}
         value={set.weight}
         onChange={(e) => onChange("weight", e.target.value)}
-        className="h-9 text-center px-2 text-sm font-medium min-w-0 flex-1"
+        className="h-9 text-center px-2 text-sm font-data min-w-0 flex-1"
       />
       <Input
         type="number"
@@ -110,7 +110,7 @@ function SetRowInput({
         placeholder="reps"
         value={set.reps}
         onChange={(e) => onChange("reps", e.target.value)}
-        className="h-9 text-center px-2 text-sm font-medium min-w-0 flex-1"
+        className="h-9 text-center px-2 text-sm font-data min-w-0 flex-1"
         min="0"
       />
       <button
@@ -118,7 +118,7 @@ function SetRowInput({
         onClick={onDelete}
         disabled={!canDelete}
         className={cn(
-          "h-9 w-8 flex items-center justify-center rounded-lg shrink-0 transition-colors",
+          "h-9 w-8 flex items-center justify-center rounded-sm shrink-0 transition-colors",
           canDelete
             ? "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             : "text-muted-foreground/30 pointer-events-none"
@@ -156,7 +156,7 @@ function ExerciseCard({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card px-3.5 py-3 space-y-2.5">
+    <div className="rounded-sm border border-border bg-card px-3.5 py-3 space-y-2.5">
       <div className="flex items-start gap-2 min-w-0">
         <Dumbbell className="h-4 w-4 shrink-0 text-primary mt-0.5" strokeWidth={2} />
         <div className="min-w-0 flex-1 space-y-0.5">

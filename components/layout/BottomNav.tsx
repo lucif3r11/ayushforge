@@ -31,7 +31,7 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 h-16 bg-background/90 backdrop-blur-md border-t border-border">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 h-16 bg-background/95 backdrop-blur-md border-t border-border shadow-[0_-1px_0_0_hsl(180_100%_50%/0.08)]">
       <div className="h-full flex items-center justify-around px-1">
         {tabs.map(({ label, href, activeOn }) => {
           const active = activeOn.some(
@@ -49,10 +49,10 @@ export default function BottomNav() {
               {/* Icon + label inside a pill */}
               <div
                 className={cn(
-                  "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-150",
+                  "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-sm transition-all duration-150",
                   active
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-primary/15 text-primary shadow-[0_0_12px_hsl(180_100%_50%/0.2)] border border-primary/25"
+                    : "text-muted-foreground hover:text-foreground border border-transparent"
                 )}
               >
                 <Icon

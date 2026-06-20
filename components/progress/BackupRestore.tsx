@@ -110,7 +110,7 @@ function ConfirmImport({
         </Button>
         <Button
           size="sm"
-          className="flex-1 bg-amber-500 hover:bg-amber-600 text-white border-0"
+          className="flex-1 bg-amber-500 hover:bg-amber-600 text-primary-foreground border-0"
           onClick={onConfirm}
         >
           Yes, Import

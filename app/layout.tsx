@@ -25,10 +25,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F4F5F8" },
-    { media: "(prefers-color-scheme: dark)",  color: "#0E1117" },
-  ],
+  themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -44,12 +41,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full bg-background text-foreground">
         {children}
-        <Toaster richColors position="top-center" />
+        <Toaster richColors position="top-center" theme="dark" />
       </body>
     </html>
   );

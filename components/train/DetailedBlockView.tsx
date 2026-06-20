@@ -346,7 +346,7 @@ function GroupBlock({
     return (
       <div
         className={cn(
-          "rounded-lg backdrop-blur-md bg-zinc-900/40 px-3 py-2.5 space-y-2",
+          "rounded-sm backdrop-blur-md bg-card/60 px-3 py-2.5 space-y-2",
           "border border-cyber/20",
           "shadow-[0_0_0_1px_hsl(186_100%_50%/0.12),inset_0_0_24px_hsl(186_100%_50%/0.03),0_0_28px_hsl(186_100%_50%/0.07)]"
         )}

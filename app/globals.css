@@ -2,117 +2,54 @@
 @config "../tailwind.config.js";
 @plugin "tailwindcss-animate";
 
-@custom-variant dark (&:is(.dark *), @media (prefers-color-scheme: dark));
+@custom-variant dark (&:is(.dark *));
 
-/* ─── Tactical HUD — Dark Canvas (default) ──────────────────────────────── */
-:root {
-  /* Surfaces — pure darkness */
-  --background: 0 0% 0%;              /* pitch black #000000 */
-  --card:        240 4% 4%;           /* matte titanium #0b0b0c */
-  --popover:     0 0% 7%;             /* elevated panel #121212 */
+/* ─── Tactical Void — forced midnight HUD (always dark) ───────────────────── */
+:root,
+.dark {
+  color-scheme: dark;
 
-  /* Text — cold HUD white */
-  --foreground:          0 0% 93%;    /* #EDEDED */
-  --card-foreground:     0 0% 93%;
-  --popover-foreground:  0 0% 93%;
+  /* Surfaces — absolute pitch black canvas */
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
 
-  /* Primary — electric cyber blue (active tabs, hit targets) */
-  --primary:             186 100% 50%;  /* #00f0ff */
-  --primary-foreground:  0 0% 0%;     /* black on cyan */
+  --card: 0 0% 4%;
+  --card-foreground: 0 0% 100%;
 
-  /* Secondary / Muted — deep titanium layers */
-  --secondary:           0 0% 7%;       /* #121212 */
-  --secondary-foreground: 0 0% 80%;
-  --muted:               240 4% 4%;     /* #0b0b0c */
-  --muted-foreground:    0 0% 50%;     /* #808080 */
+  --popover: 0 0% 4%;
+  --popover-foreground: 0 0% 100%;
 
-  /* Accent — toxic green for success / checkmarks */
-  --accent:              108 100% 54%;  /* #39ff14 */
-  --accent-foreground:   0 0% 0%;
+  /* Primary — cyber electric cyan */
+  --primary: 180 100% 50%;
+  --primary-foreground: 0 0% 0%;
 
-  /* Status */
-  --destructive:         0 85% 55%;
+  --secondary: 0 0% 9%;
+  --secondary-foreground: 0 0% 100%;
+
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 65%;
+
+  /* Accent — tactical tracking green */
+  --accent: 142 71% 45%;
+  --accent-foreground: 0 0% 0%;
+
+  --destructive: 0 85% 55%;
   --destructive-foreground: 0 0% 100%;
 
-  /* Borders — razor-thin industrial lines */
-  --border: 0 0% 14%;                  /* #242424 */
-  --input:  0 0% 14%;
-  --ring:   186 100% 50%;               /* cyber blue focus ring */
+  /* Borders — sharp low-profile separation */
+  --border: 0 0% 15%;
+  --input: 0 0% 15%;
+  --ring: 180 100% 50%;
 
-  /* Geometry — sharp industrial corners */
-  --radius: 0.125rem;
+  /* Geometry — industrial 2px corners */
+  --radius: 2px;
 
   /* Chart palette — HUD spectrum */
-  --chart-1: 186 100% 50%;   /* cyber blue */
-  --chart-2: 108 100% 54%;   /* toxic green */
-  --chart-3: 198 80% 54%;    /* cyan */
-  --chart-4: 267 60% 62%;    /* purple */
-  --chart-5: 38  92% 52%;    /* amber */
-}
-
-/* ─── Tactical HUD — Daylight variant ───────────────────────────────────── */
-@media (prefers-color-scheme: light) {
-  :root {
-    --background: 0 0% 98%;
-    --card:        0 0% 100%;
-    --popover:     0 0% 100%;
-
-    --foreground:          0 0% 7%;
-    --card-foreground:     0 0% 7%;
-    --popover-foreground:  0 0% 7%;
-
-    --primary:             186 100% 38%;
-    --primary-foreground:  0 0% 100%;
-
-    --secondary:           0 0% 94%;
-    --secondary-foreground: 0 0% 20%;
-    --muted:               0 0% 96%;
-    --muted-foreground:    0 0% 42%;
-
-    --accent:              108 100% 32%;
-    --accent-foreground:   0 0% 100%;
-
-    --destructive:         0 85% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 0 0% 86%;
-    --input:  0 0% 86%;
-    --ring:   186 100% 38%;
-
-    --chart-1: 186 100% 38%;
-    --chart-2: 108 100% 32%;
-    --chart-3: 198 80% 44%;
-    --chart-4: 267 60% 52%;
-    --chart-5: 38  92% 46%;
-  }
-}
-
-/* ─── Tactical HUD — Dark class override ────────────────────────────────── */
-.dark {
-  --background: 0 0% 0%;
-  --card:        240 4% 4%;
-  --popover:     0 0% 7%;
-  --foreground:          0 0% 93%;
-  --card-foreground:     0 0% 93%;
-  --popover-foreground:  0 0% 93%;
-  --primary:             186 100% 50%;
-  --primary-foreground:  0 0% 0%;
-  --secondary:           0 0% 7%;
-  --secondary-foreground: 0 0% 80%;
-  --muted:               240 4% 4%;
-  --muted-foreground:    0 0% 50%;
-  --accent:              108 100% 54%;
-  --accent-foreground:   0 0% 0%;
-  --destructive:         0 85% 55%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 0 0% 14%;
-  --input:  0 0% 14%;
-  --ring:   186 100% 50%;
-  --chart-1: 186 100% 50%;
-  --chart-2: 108 100% 54%;
+  --chart-1: 180 100% 50%;
+  --chart-2: 142 71% 45%;
   --chart-3: 198 80% 54%;
   --chart-4: 267 60% 62%;
-  --chart-5: 38  92% 52%;
+  --chart-5: 38 92% 52%;
 }
 
 /* ─── Tailwind utility mappings ──────────────────────────────────────────── */
@@ -141,18 +78,22 @@
   --color-chart-3:             hsl(var(--chart-3));
   --color-chart-4:             hsl(var(--chart-4));
   --color-chart-5:             hsl(var(--chart-5));
-  --color-cyber:               #00f0ff;
-  --color-toxic:               #39ff14;
-  --radius-sm: 0;
-  --radius-md: 0.125rem;
-  --radius-lg: 0.125rem;
-  --radius-xl: 0.25rem;
+  --color-cyber:               hsl(180 100% 50%);
+  --color-toxic:               hsl(142 71% 45%);
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-DEFAULT: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 2px;
+  --radius-3xl: 2px;
   --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-geist-mono), "JetBrains Mono", "Fira Code", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-data: "JetBrains Mono", "Fira Code", "SF Mono", var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-/* ─── Data typography — sets, reps, macros, targets ─────────────────────── */
+/* ─── Cockpit data typography ───────────────────────────────────────────── */
 @utility font-data {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
@@ -170,6 +111,10 @@
   border-color: hsl(var(--border));
 }
 
+html {
+  color-scheme: dark;
+}
+
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
@@ -178,12 +123,21 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Intentional heading hierarchy */
+/* Instrumentation readouts — metrics, clocks, set counters */
+input[type="number"],
+input[inputmode="decimal"],
+input[inputmode="numeric"],
+.font-data,
+.font-mono,
+.tabular-nums {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
 h1 { font-weight: 800; letter-spacing: -0.025em; }
 h2 { font-weight: 700; letter-spacing: -0.020em; }
 h3 { font-weight: 600; letter-spacing: -0.015em; }
 
-/* Text selection — cyber blue glow */
 ::selection {
   background: hsl(var(--primary) / 0.22);
   color: hsl(var(--foreground));
@@ -194,30 +148,16 @@ h3 { font-weight: 600; letter-spacing: -0.015em; }
   background: linear-gradient(
     135deg,
     hsl(0 0% 0%) 0%,
-    hsl(186 60% 6%) 50%,
+    hsl(180 60% 6%) 50%,
     hsl(0 0% 0%) 100%
   );
-  color: #00f0ff;
-  border: 1px solid hsl(186 100% 50% / 0.20);
+  color: hsl(180 100% 50%);
+  border: 1px solid hsl(180 100% 50% / 0.20);
 }
 
-/* HUD card elevation — thin cyber outline, no soft shadows */
+/* HUD card elevation — thin cyber outline */
 .card-elevated {
   box-shadow:
-    0 0 0 1px hsl(186 100% 50% / 0.10),
-    0 2px 12px rgba(0, 0, 0, 0.60);
-}
-
-@media (prefers-color-scheme: light) {
-  .card-elevated {
-    box-shadow:
-      0 0 0 1px hsl(186 100% 38% / 0.12),
-      0 2px 8px rgba(0, 0, 0, 0.08);
-  }
-}
-
-.dark .card-elevated {
-  box-shadow:
-    0 0 0 1px hsl(186 100% 50% / 0.10),
+    0 0 0 1px hsl(180 100% 50% / 0.10),
     0 2px 12px rgba(0, 0, 0, 0.60);
 }
