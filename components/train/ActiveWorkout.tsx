@@ -374,7 +374,7 @@ export default function ActiveWorkout({ block, day, onClose, onSaved }: ActiveWo
     });
 
     onSaved();
-  }, [exercises, addWorkoutLog, block, day, sessionTitle, onSaved]);
+  }, [exercises, addWorkoutLog, block.id, day.id, sessionTitle, onSaved]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
