@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Layers,
   Trash2,
@@ -27,6 +28,85 @@ import type {
   ProgressionTable,
   WeeklyScheduleItem,
 } from "@/lib/types";
+
+// ─── Motion presets ────────────────────────────────────────────────────────────
+
+const daySlideVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 56 : -56,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    transition: {
+      type: "tween" as const,
+      duration: 0.38,
+      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
+    },
+  },
+  exit: (direction: number) => ({
+    x: direction > 0 ? -40 : 40,
+    opacity: 0,
+    transition: {
+      type: "tween" as const,
+      duration: 0.22,
+      ease: [0.4, 0, 0.8, 0.2] as [number, number, number, number],
+    },
+  }),
+};
+
+// ─── Section accent (target-lock chroma) ───────────────────────────────────────
+
+type SectionAccent = {
+  bar: string;
+  glow?: string;
+};
+
+function resolveSectionAccent(section: DetailedBlockSection): SectionAccent {
+  const raw = `${section.type ?? ""} ${section.name}`.toLowerCase();
+
+  if (/heavy.?compound|^compounds?$/.test(raw) && !/superset/.test(raw)) {
+    return {
+      bar: "bg-cyber",
+      glow: "shadow-[0_0_10px_hsl(186_100%_50%/0.55)]",
+    };
+  }
+  if (/finisher|hyrox/.test(raw)) {
+    return {
+      bar: "bg-toxic",
+      glow: "shadow-[0_0_10px_hsl(108_100%_54%/0.55)]",
+    };
+  }
+  if (/superset/.test(raw)) {
+    return {
+      bar: "bg-cyber/70",
+      glow: "shadow-[0_0_8px_hsl(186_100%_50%/0.35)]",
+    };
+  }
+  if (/warm/.test(raw)) {
+    return { bar: "bg-zinc-500/60" };
+  }
+  if (/unilateral/.test(raw)) {
+    return {
+      bar: "bg-amber-400",
+      glow: "shadow-[0_0_8px_hsl(38_92%_52%/0.45)]",
+    };
+  }
+  if (/core/.test(raw)) {
+    return {
+      bar: "bg-violet-400",
+      glow: "shadow-[0_0_8px_hsl(267_60%_62%/0.45)]",
+    };
+  }
+  if (/accessor/.test(raw)) {
+    return { bar: "bg-zinc-400/70" };
+  }
+  if (/cool/.test(raw)) {
+    return { bar: "bg-zinc-600/60" };
+  }
+  return { bar: "bg-border" };
+}
 
 // ─── Section label ─────────────────────────────────────────────────────────────
 
@@ -165,7 +245,15 @@ function NoteBlock({ children, indent }: { children: React.ReactNode; indent?: b
   );
 }
 
-function ExerciseRow({ ex, indexLabel }: { ex: DetailedExercise; indexLabel?: string }) {
+function ExerciseRow({
+  ex,
+  indexLabel,
+  accent,
+}: {
+  ex: DetailedExercise;
+  indexLabel?: string;
+  accent: SectionAccent;
+}) {
   const setsReps = exerciseSetsRepsLabel(ex);
   const metaLine = [
     ex.tempo ? `Tempo ${ex.tempo}` : null,
@@ -176,50 +264,61 @@ function ExerciseRow({ ex, indexLabel }: { ex: DetailedExercise; indexLabel?: st
     .filter(Boolean)
     .join("  ·  ");
 
+  const detailIndent = indexLabel ? "pl-6" : "pl-0.5";
+
   return (
-    <div className="space-y-0.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="flex items-baseline gap-2 min-w-0">
+    <div className="relative pl-3">
+      <div
+        className={cn(
+          "absolute left-0 top-0.5 bottom-0.5 w-[2px] rounded-full",
+          accent.bar,
+          accent.glow
+        )}
+        aria-hidden
+      />
+
+      <div className="space-y-0.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
           {indexLabel && (
             <span className="flex items-center justify-center h-4 w-4 rounded-full bg-primary/15 text-[10px] font-bold text-primary shrink-0">
               {indexLabel}
             </span>
           )}
-          <p className="text-sm font-medium leading-snug">{ex.name}</p>
+          <p className="text-sm font-semibold leading-snug tracking-tight">{ex.name}</p>
+          {setsReps && (
+            <span className="shrink-0 rounded border border-cyber/20 bg-cyber/8 px-1.5 py-px text-[11px] font-bold font-mono tabular-nums text-cyber/90 shadow-[0_0_8px_hsl(186_100%_50%/0.12)]">
+              {setsReps}
+            </span>
+          )}
         </div>
-        {setsReps && (
-          <span className="shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-bold font-mono tabular-nums text-foreground/90">
-            {setsReps}
-          </span>
+
+        {metaLine && (
+          <p className={cn("text-[10px] font-mono text-muted-foreground leading-snug", detailIndent)}>
+            {metaLine}
+          </p>
+        )}
+
+        {ex.rest && (
+          <p className={cn("text-[10px] font-mono text-muted-foreground/80 leading-snug", detailIndent)}>
+            Rest {ex.rest}
+          </p>
+        )}
+
+        {ex.notes && <NoteBlock indent={!!indexLabel}>{ex.notes}</NoteBlock>}
+
+        {ex.formCues && ex.formCues.length > 0 && (
+          <NoteBlock indent={!!indexLabel}>
+            <ul className="space-y-0.5">
+              {ex.formCues.map((c, i) => (
+                <li key={i} className="flex gap-1.5">
+                  <span className="text-muted-foreground/50 shrink-0">•</span>
+                  {c}
+                </li>
+              ))}
+            </ul>
+          </NoteBlock>
         )}
       </div>
-
-      {metaLine && (
-        <p className={cn("text-[10px] font-mono text-muted-foreground leading-snug", indexLabel && "pl-6")}>
-          {metaLine}
-        </p>
-      )}
-
-      {ex.rest && (
-        <p className={cn("text-[10px] font-mono text-muted-foreground/80 leading-snug", indexLabel && "pl-6")}>
-          Rest {ex.rest}
-        </p>
-      )}
-
-      {ex.notes && <NoteBlock indent={!!indexLabel}>{ex.notes}</NoteBlock>}
-
-      {ex.formCues && ex.formCues.length > 0 && (
-        <NoteBlock indent={!!indexLabel}>
-          <ul className="space-y-0.5">
-            {ex.formCues.map((c, i) => (
-              <li key={i} className="flex gap-1.5">
-                <span className="text-muted-foreground/50 shrink-0">•</span>
-                {c}
-              </li>
-            ))}
-          </ul>
-        </NoteBlock>
-      )}
     </div>
   );
 }
@@ -235,22 +334,33 @@ function supersetGroupTitle(group: DetailedExerciseGroup): string {
 function GroupBlock({
   group,
   forceSuperset = false,
+  accent,
 }: {
   group: DetailedExerciseGroup;
   forceSuperset?: boolean;
+  accent: SectionAccent;
 }) {
   const showAsSuperset = forceSuperset || group.isSuperset;
 
   if (showAsSuperset) {
     return (
-      <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2.5 space-y-2">
+      <div
+        className={cn(
+          "rounded-lg backdrop-blur-md bg-zinc-900/40 px-3 py-2.5 space-y-2",
+          "border border-cyber/20",
+          "shadow-[0_0_0_1px_hsl(186_100%_50%/0.12),inset_0_0_24px_hsl(186_100%_50%/0.03),0_0_28px_hsl(186_100%_50%/0.07)]"
+        )}
+      >
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] font-bold tracking-[0.1em] uppercase text-primary/80 shrink-0">
+          <span className="text-[10px] font-bold tracking-[0.12em] uppercase text-cyber/80 shrink-0">
             {supersetGroupTitle(group)}
           </span>
-          <div className="flex-1 h-px bg-primary/15 min-w-2" />
+          <div className="flex-1 h-px bg-cyber/15 min-w-2 shadow-[0_0_6px_hsl(186_100%_50%/0.25)]" />
           {group.rounds && (
-            <Badge variant="secondary" className="text-[9px] h-4 px-1.5 shrink-0 font-mono">
+            <Badge
+              variant="secondary"
+              className="text-[9px] h-4 px-1.5 shrink-0 font-mono border border-cyber/15 bg-cyber/5 text-cyber/90"
+            >
               {group.rounds} round{group.rounds === "1" ? "" : "s"}
             </Badge>
           )}
@@ -258,12 +368,17 @@ function GroupBlock({
 
         <div className="space-y-2.5">
           {group.exercises.map((ex, j) => (
-            <ExerciseRow key={ex.id} ex={ex} indexLabel={String.fromCharCode(65 + j)} />
+            <ExerciseRow
+              key={ex.id}
+              ex={ex}
+              indexLabel={String.fromCharCode(65 + j)}
+              accent={accent}
+            />
           ))}
         </div>
 
         {group.restAfterPair && (
-          <p className="text-[10px] font-mono text-primary/70 leading-snug pt-1 border-t border-primary/10">
+          <p className="text-[10px] font-mono text-cyber/60 leading-snug pt-1 border-t border-cyber/10">
             Rest after round: {group.restAfterPair}
           </p>
         )}
@@ -273,7 +388,7 @@ function GroupBlock({
 
   return (
     <div className="py-0.5">
-      <ExerciseRow ex={group.exercises[0]} />
+      <ExerciseRow ex={group.exercises[0]} accent={accent} />
     </div>
   );
 }
@@ -297,6 +412,7 @@ function sectionGroups(section: DetailedBlockSection): DetailedExerciseGroup[] {
 function SectionBlock({ section }: { section: DetailedBlockSection }) {
   const groups = sectionGroups(section);
   const supersetSection = isSupersetSection(section);
+  const accent = resolveSectionAccent(section);
 
   if (groups.length === 0) return null;
 
@@ -305,7 +421,7 @@ function SectionBlock({ section }: { section: DetailedBlockSection }) {
       <SectionLabel>{section.name}</SectionLabel>
       <div className="space-y-2">
         {groups.map((g) => (
-          <GroupBlock key={g.id} group={g} forceSuperset={supersetSection} />
+          <GroupBlock key={g.id} group={g} forceSuperset={supersetSection} accent={accent} />
         ))}
       </div>
     </div>
@@ -441,6 +557,7 @@ export default function DetailedBlockView({
   const deleteDetailedBlock = useAppStore((s) => s.deleteDetailedBlock);
 
   const [importOpen, setImportOpen] = useState(false);
+  const [dayDirection, setDayDirection] = useState(1);
 
   const block = useMemo(
     () => detailedBlocks.find((b) => b.id === selectedBlockId) ?? null,
@@ -460,6 +577,19 @@ export default function DetailedBlockView({
       toast.success(`"${name}" removed.`);
     },
     [deleteDetailedBlock]
+  );
+
+  const handleSelectDay = useCallback(
+    (dayId: string) => {
+      if (block) {
+        const newIndex = block.days.findIndex((d) => d.id === dayId);
+        if (newIndex >= 0 && dayIndex >= 0 && newIndex !== dayIndex) {
+          setDayDirection(newIndex > dayIndex ? 1 : -1);
+        }
+      }
+      onSelectDay(dayId);
+    },
+    [block, dayIndex, onSelectDay]
   );
 
   return (
@@ -497,26 +627,51 @@ export default function DetailedBlockView({
 
                 {/* Day tabs */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Select a day</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-2">
+                    Target Lock — Select Day
+                  </p>
                   <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1">
-                    {block.days.map((d) => (
-                      <button
-                        key={d.id}
-                        onClick={() => onSelectDay(d.id)}
-                        className={cn(
-                          "flex-shrink-0 px-3 py-2 rounded-lg border text-xs font-medium transition-all",
-                          d.id === selectedDayId
-                            ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                            : "border-border text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
-                        )}
-                      >
-                        {d.name}
-                      </button>
-                    ))}
+                    {block.days.map((d) => {
+                      const isActive = d.id === selectedDayId;
+                      return (
+                        <button
+                          key={d.id}
+                          onClick={() => handleSelectDay(d.id)}
+                          className={cn(
+                            "relative flex-shrink-0 px-3 py-2 rounded-lg border text-xs font-bold uppercase tracking-wide transition-colors",
+                            isActive
+                              ? "border-transparent text-primary-foreground"
+                              : "border-border text-muted-foreground hover:border-cyber/30 hover:bg-cyber/5 hover:text-foreground"
+                          )}
+                        >
+                          {isActive && (
+                            <motion.span
+                              layoutId="detailed-block-day-tab"
+                              className="absolute inset-0 rounded-lg border border-primary bg-primary shadow-[0_0_14px_hsl(186_100%_50%/0.35)]"
+                              transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                            />
+                          )}
+                          <span className="relative z-10">{d.name}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {day && <DayView day={day} addOns={addOns} />}
+                <AnimatePresence mode="wait" custom={dayDirection}>
+                  {day && (
+                    <motion.div
+                      key={day.id}
+                      custom={dayDirection}
+                      variants={daySlideVariants}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                    >
+                      <DayView day={day} addOns={addOns} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {block.progressionTables.length > 0 && (
                   <div className="space-y-2">

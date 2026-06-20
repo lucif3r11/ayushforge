@@ -1,125 +1,118 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *), @media (prefers-color-scheme: dark));
 
-/* ─── Light Theme ─────────────────────────────────────────────────────────── */
+/* ─── Tactical HUD — Dark Canvas (default) ──────────────────────────────── */
 :root {
-  /* Surfaces */
-  --background: 220 20% 97%;        /* cool off-white #F4F5F8 */
-  --card:        0 0% 100%;          /* pure white cards */
-  --popover:     0 0% 100%;
+  /* Surfaces — pure darkness */
+  --background: 0 0% 0%;              /* pitch black #000000 */
+  --card:        240 4% 4%;           /* matte titanium #0b0b0c */
+  --popover:     0 0% 7%;             /* elevated panel #121212 */
 
-  /* Text */
-  --foreground:          222 47% 11%;    /* near-black with blue tint */
-  --card-foreground:     222 47% 11%;
-  --popover-foreground:  222 47% 11%;
+  /* Text — cold HUD white */
+  --foreground:          0 0% 93%;    /* #EDEDED */
+  --card-foreground:     0 0% 93%;
+  --popover-foreground:  0 0% 93%;
 
-  /* Primary — steel blue */
-  --primary:             217 91% 50%;    /* #2872E9 */
-  --primary-foreground:  0 0% 100%;
+  /* Primary — electric cyber blue (active tabs, hit targets) */
+  --primary:             186 100% 50%;  /* #00f0ff */
+  --primary-foreground:  0 0% 0%;     /* black on cyan */
 
-  /* Secondary / Muted */
-  --secondary:           217 20% 91%;    /* light blue-gray */
-  --secondary-foreground: 222 32% 20%;
-  --muted:               217 20% 93%;
-  --muted-foreground:    218 14% 42%;    /* readable mid-gray */
+  /* Secondary / Muted — deep titanium layers */
+  --secondary:           0 0% 7%;       /* #121212 */
+  --secondary-foreground: 0 0% 80%;
+  --muted:               240 4% 4%;     /* #0b0b0c */
+  --muted-foreground:    0 0% 50%;     /* #808080 */
 
-  /* Accent */
-  --accent:              217 20% 91%;
-  --accent-foreground:   222 47% 11%;
+  /* Accent — toxic green for success / checkmarks */
+  --accent:              108 100% 54%;  /* #39ff14 */
+  --accent-foreground:   0 0% 0%;
 
   /* Status */
-  --destructive:         4 86% 56%;
+  --destructive:         0 85% 55%;
   --destructive-foreground: 0 0% 100%;
 
-  /* Borders & inputs */
-  --border: 217 20% 86%;
-  --input:  217 20% 86%;
-  --ring:   217 91% 50%;
+  /* Borders — razor-thin industrial lines */
+  --border: 0 0% 14%;                  /* #242424 */
+  --input:  0 0% 14%;
+  --ring:   186 100% 50%;               /* cyber blue focus ring */
 
-  /* Geometry */
-  --radius: 0.625rem;
+  /* Geometry — sharp industrial corners */
+  --radius: 0.125rem;
 
-  /* Chart palette — colorblind-friendly (no red/green reliance) */
-  --chart-1: 217 91% 58%;   /* blue */
-  --chart-2: 38  92% 52%;   /* amber */
-  --chart-3: 173 58% 44%;   /* teal */
-  --chart-4: 267 60% 62%;   /* purple */
-  --chart-5: 198 80% 54%;   /* cyan */
+  /* Chart palette — HUD spectrum */
+  --chart-1: 186 100% 50%;   /* cyber blue */
+  --chart-2: 108 100% 54%;   /* toxic green */
+  --chart-3: 198 80% 54%;    /* cyan */
+  --chart-4: 267 60% 62%;    /* purple */
+  --chart-5: 38  92% 52%;    /* amber */
 }
 
-/* ─── Dark Theme (system preference) ────────────────────────────────────── */
-@media (prefers-color-scheme: dark) {
+/* ─── Tactical HUD — Daylight variant ───────────────────────────────────── */
+@media (prefers-color-scheme: light) {
   :root {
-    /* Surfaces — charcoal-navy family */
-    --background: 222 18%  7%;   /* #0E1117 */
-    --card:        222 16% 11%;   /* #171B23 — cards lift above bg */
-    --popover:     222 16% 13%;
+    --background: 0 0% 98%;
+    --card:        0 0% 100%;
+    --popover:     0 0% 100%;
 
-    /* Text — warm white */
-    --foreground:         213 18% 92%;   /* #E4E8F0 */
-    --card-foreground:    213 18% 92%;
-    --popover-foreground: 213 18% 92%;
+    --foreground:          0 0% 7%;
+    --card-foreground:     0 0% 7%;
+    --popover-foreground:  0 0% 7%;
 
-    /* Primary — vivid steel blue */
-    --primary:             217 91% 62%;   /* #4D90F8 */
-    --primary-foreground:  222 47%  5%;   /* very dark for contrast */
+    --primary:             186 100% 38%;
+    --primary-foreground:  0 0% 100%;
 
-    /* Secondary / Muted */
-    --secondary:           222 16% 17%;   /* #222A36 */
-    --secondary-foreground: 213 15% 78%;
-    --muted:               222 16% 14%;   /* #1C2130 */
-    --muted-foreground:    217 12% 54%;   /* #7E8AA0 */
+    --secondary:           0 0% 94%;
+    --secondary-foreground: 0 0% 20%;
+    --muted:               0 0% 96%;
+    --muted-foreground:    0 0% 42%;
 
-    /* Accent */
-    --accent:              222 16% 17%;
-    --accent-foreground:   213 18% 90%;
+    --accent:              108 100% 32%;
+    --accent-foreground:   0 0% 100%;
 
-    /* Status */
-    --destructive:         4 80% 58%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive:         0 85% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* Borders — very subtle */
-    --border: 222 14% 19%;   /* #252B37 */
-    --input:  222 14% 19%;
-    --ring:   217 91% 62%;
+    --border: 0 0% 86%;
+    --input:  0 0% 86%;
+    --ring:   186 100% 38%;
 
-    /* Charts adjusted for dark background */
-    --chart-1: 217 91% 62%;
-    --chart-2: 38  92% 56%;
-    --chart-3: 173 55% 50%;
-    --chart-4: 267 60% 68%;
-    --chart-5: 198 80% 60%;
+    --chart-1: 186 100% 38%;
+    --chart-2: 108 100% 32%;
+    --chart-3: 198 80% 44%;
+    --chart-4: 267 60% 52%;
+    --chart-5: 38  92% 46%;
   }
 }
 
-/* ─── Dark Theme (.dark class) ───────────────────────────────────────────── */
+/* ─── Tactical HUD — Dark class override ────────────────────────────────── */
 .dark {
-  --background: 222 18%  7%;
-  --card:        222 16% 11%;
-  --popover:     222 16% 13%;
-  --foreground:         213 18% 92%;
-  --card-foreground:    213 18% 92%;
-  --popover-foreground: 213 18% 92%;
-  --primary:             217 91% 62%;
-  --primary-foreground:  222 47%  5%;
-  --secondary:           222 16% 17%;
-  --secondary-foreground: 213 15% 78%;
-  --muted:               222 16% 14%;
-  --muted-foreground:    217 12% 54%;
-  --accent:              222 16% 17%;
-  --accent-foreground:   213 18% 90%;
-  --destructive:         4 80% 58%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 222 14% 19%;
-  --input:  222 14% 19%;
-  --ring:   217 91% 62%;
-  --chart-1: 217 91% 62%;
-  --chart-2: 38  92% 56%;
-  --chart-3: 173 55% 50%;
-  --chart-4: 267 60% 68%;
-  --chart-5: 198 80% 60%;
+  --background: 0 0% 0%;
+  --card:        240 4% 4%;
+  --popover:     0 0% 7%;
+  --foreground:          0 0% 93%;
+  --card-foreground:     0 0% 93%;
+  --popover-foreground:  0 0% 93%;
+  --primary:             186 100% 50%;
+  --primary-foreground:  0 0% 0%;
+  --secondary:           0 0% 7%;
+  --secondary-foreground: 0 0% 80%;
+  --muted:               240 4% 4%;
+  --muted-foreground:    0 0% 50%;
+  --accent:              108 100% 54%;
+  --accent-foreground:   0 0% 0%;
+  --destructive:         0 85% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 14%;
+  --input:  0 0% 14%;
+  --ring:   186 100% 50%;
+  --chart-1: 186 100% 50%;
+  --chart-2: 108 100% 54%;
+  --chart-3: 198 80% 54%;
+  --chart-4: 267 60% 62%;
+  --chart-5: 38  92% 52%;
 }
 
 /* ─── Tailwind utility mappings ──────────────────────────────────────────── */
@@ -148,12 +141,28 @@
   --color-chart-3:             hsl(var(--chart-3));
   --color-chart-4:             hsl(var(--chart-4));
   --color-chart-5:             hsl(var(--chart-5));
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-cyber:               #00f0ff;
+  --color-toxic:               #39ff14;
+  --radius-sm: 0;
+  --radius-md: 0.125rem;
+  --radius-lg: 0.125rem;
+  --radius-xl: 0.25rem;
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), "JetBrains Mono", "Fira Code", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-data: "JetBrains Mono", "Fira Code", "SF Mono", var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* ─── Data typography — sets, reps, macros, targets ─────────────────────── */
+@utility font-data {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+@utility tabular-nums {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 /* ─── Base styles ─────────────────────────────────────────────────────────── */
@@ -174,43 +183,41 @@ h1 { font-weight: 800; letter-spacing: -0.025em; }
 h2 { font-weight: 700; letter-spacing: -0.020em; }
 h3 { font-weight: 600; letter-spacing: -0.015em; }
 
-/* Text selection uses primary accent */
+/* Text selection — cyber blue glow */
 ::selection {
-  background: hsl(var(--primary) / 0.18);
+  background: hsl(var(--primary) / 0.22);
   color: hsl(var(--foreground));
 }
 
-/* ─── Premium hero gradient ───────────────────────────────────────────────── */
-/* Always-dark gradient regardless of system theme — white text is always
-   readable because the background is anchored to deep navy/steel values.    */
+/* ─── Tactical HUD hero panel ───────────────────────────────────────────── */
 .hero-gradient {
   background: linear-gradient(
     135deg,
-    hsl(217 85% 42%) 0%,   /* deep steel blue — dark enough in light mode  */
-    hsl(232 80% 24%) 100%  /* deep navy                                     */
+    hsl(0 0% 0%) 0%,
+    hsl(186 60% 6%) 50%,
+    hsl(0 0% 0%) 100%
   );
-  color: #ffffff;
-  border: none;
+  color: #00f0ff;
+  border: 1px solid hsl(186 100% 50% / 0.20);
 }
 
-/* Light mode: drop shadow makes the dark hero card lift off the light page */
+/* HUD card elevation — thin cyber outline, no soft shadows */
 .card-elevated {
   box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.18),
-    0 1px 4px  rgba(0, 0, 0, 0.10);
+    0 0 0 1px hsl(186 100% 50% / 0.10),
+    0 2px 12px rgba(0, 0, 0, 0.60);
 }
 
-/* Dark mode: inner highlight + stronger drop shadow */
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   .card-elevated {
     box-shadow:
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-      0 4px 20px rgba(0, 0, 0, 0.40);
+      0 0 0 1px hsl(186 100% 38% / 0.12),
+      0 2px 8px rgba(0, 0, 0, 0.08);
   }
 }
 
 .dark .card-elevated {
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-    0 4px 20px rgba(0, 0, 0, 0.40);
+    0 0 0 1px hsl(186 100% 50% / 0.10),
+    0 2px 12px rgba(0, 0, 0, 0.60);
 }
